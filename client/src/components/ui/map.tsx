@@ -1,10 +1,11 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { Loader2, Map as MapIcon } from 'lucide-react';
 
 // Define types
 declare global {
   interface Window {
     google: any;
+    initMap?: () => void;
   }
 }
 
@@ -25,100 +26,248 @@ interface MapProps {
 }
 
 export function Map({ scooters, userLocation, onScooterSelect, className = '' }: MapProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const googleMapRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
   
-  // Simple wrapper for the original Google Map component
-  useEffect(() => {
-    // Set a short delay to ensure DOM is ready and Google Maps is loaded
-    const timer = setTimeout(() => {
-      initMap();
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Check if Google Maps API is loaded
+  const isGoogleMapsLoaded = () => {
+    return window.google && window.google.maps;
+  };
+  
+  // Load Google Maps script
+  const loadGoogleMapsScript = useCallback(() => {
+    if (isGoogleMapsLoaded()) {
+      console.log("Google Maps already loaded");
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      try {
+        // Get API key
+        const apiKey = "AIzaSyBCZRjiJ5OcOqlAfySG56ExYIcJ-9DLo4E";
+        
+        // Create callback function that will be called when the script loads
+        window.initMap = () => {
+          console.log("Google Maps script loaded successfully");
+          resolve();
+        };
+        
+        // Create script
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap`;
+        script.async = true;
+        script.defer = true;
+        script.onerror = () => {
+          console.error("Failed to load Google Maps script");
+          reject(new Error("Failed to load Google Maps"));
+        };
+        
+        // Add to document
+        document.head.appendChild(script);
+      } catch (error) {
+        console.error("Error loading Google Maps:", error);
+        reject(error);
+      }
+    });
   }, []);
   
-  // Function to initialize the map
-  const initMap = () => {
-    if (!mapRef.current) {
-      console.error("Map container element not found");
-      setError("Map container not available");
-      setLoading(false);
+  // Initialize map
+  const initializeMap = useCallback(() => {
+    if (!mapContainerRef.current) {
+      console.error("Map container not found");
+      setHasError(true);
+      setIsLoading(false);
       return;
     }
     
-    if (!window.google || !window.google.maps) {
-      console.error("Google Maps API not loaded");
-      setError("Failed to load Google Maps");
-      setLoading(false);
+    if (!isGoogleMapsLoaded()) {
+      console.error("Google Maps not loaded yet");
+      setHasError(true);
+      setIsLoading(false);
       return;
     }
     
     try {
-      console.log("Initializing map");
+      console.log("Creating new Google Map instance");
       
-      // Default location (Reykjavik, Iceland)
-      const center = userLocation 
-        ? { lat: userLocation.latitude, lng: userLocation.longitude }
-        : { lat: 64.1466, lng: -21.9426 };
+      // Default location (Reykjavik)
+      const defaultCenter = { lat: 64.1466, lng: -21.9426 };
       
-      // Create the map
-      const map = new window.google.maps.Map(mapRef.current, {
+      // Use user location if available
+      const center = userLocation ? 
+        { lat: userLocation.latitude, lng: userLocation.longitude } : 
+        defaultCenter;
+      
+      // Create new map
+      const mapOptions = {
         center,
         zoom: 14,
         disableDefaultUI: true,
-      });
+        zoomControl: true,
+        mapTypeControl: false,
+        streetViewControl: false,
+        rotateControl: false,
+        fullscreenControl: false,
+      };
       
-      // Add markers for scooters
-      scooters.forEach(scooter => {
-        const marker = new window.google.maps.Marker({
-          position: { lat: scooter.latitude, lng: scooter.longitude },
-          map,
-          title: `Scooter #${scooter.scooterId}`,
-        });
-        
-        marker.addListener('click', () => {
-          if (onScooterSelect) {
-            onScooterSelect(scooter);
+      // Create the map
+      const map = new window.google.maps.Map(mapContainerRef.current, mapOptions);
+      googleMapRef.current = map;
+      
+      // Add scooter markers
+      if (scooters && scooters.length > 0) {
+        scooters.forEach(scooter => {
+          if (scooter.latitude && scooter.longitude) {
+            addMarker(map, scooter);
           }
         });
-      });
+      }
       
-      // Success!
-      setLoading(false);
+      // Add user location marker if available
+      if (userLocation) {
+        new window.google.maps.Marker({
+          position: { lat: userLocation.latitude, lng: userLocation.longitude },
+          map,
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+          zIndex: 999,
+        });
+      }
       
-    } catch (err) {
-      console.error("Error initializing map:", err);
-      setError("Error initializing map");
-      setLoading(false);
+      setMapLoaded(true);
+      setIsLoading(false);
+      console.log("Map initialized successfully");
+      
+    } catch (error) {
+      console.error("Error initializing map:", error);
+      setHasError(true);
+      setIsLoading(false);
     }
+  }, [scooters, userLocation]);
+  
+  // Add a marker to the map
+  const addMarker = (map: any, scooter: Scooter) => {
+    const marker = new window.google.maps.Marker({
+      position: { lat: scooter.latitude, lng: scooter.longitude },
+      map,
+      title: `Scooter #${scooter.scooterId} - Battery: ${scooter.batteryLevel}%`,
+    });
+    
+    marker.addListener('click', () => {
+      if (onScooterSelect) {
+        onScooterSelect(scooter);
+      }
+    });
+    
+    // Store marker reference
+    markersRef.current.push(marker);
   };
   
-  if (loading) {
+  // Main effect: Load Google Maps and initialize the map
+  useEffect(() => {
+    console.log("Map component mounted");
+    
+    let isMounted = true;
+    
+    const setupMap = async () => {
+      try {
+        await loadGoogleMapsScript();
+        
+        if (isMounted) {
+          console.log("Proceeding to initialize map");
+          // Short delay to ensure DOM is ready
+          setTimeout(() => {
+            if (isMounted) {
+              initializeMap();
+            }
+          }, 100);
+        }
+      } catch (error) {
+        console.error("Map setup failed:", error);
+        if (isMounted) {
+          setHasError(true);
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    setupMap();
+    
+    return () => {
+      isMounted = false;
+      
+      // Cleanup markers
+      if (markersRef.current) {
+        markersRef.current.forEach(marker => marker.setMap(null));
+        markersRef.current = [];
+      }
+    };
+  }, [loadGoogleMapsScript, initializeMap]);
+  
+  // Update markers when scooters or user location changes
+  useEffect(() => {
+    if (mapLoaded && googleMapRef.current) {
+      // Clear existing markers
+      markersRef.current.forEach(marker => marker.setMap(null));
+      markersRef.current = [];
+      
+      // Add new markers
+      scooters.forEach(scooter => {
+        addMarker(googleMapRef.current, scooter);
+      });
+      
+      // Update center if user location changed
+      if (userLocation && googleMapRef.current) {
+        googleMapRef.current.setCenter({
+          lat: userLocation.latitude,
+          lng: userLocation.longitude
+        });
+      }
+    }
+  }, [scooters, userLocation, mapLoaded]);
+  
+  // Loading state
+  if (isLoading) {
     return (
-      <div className={`flex items-center justify-center bg-gray-100 h-full ${className}`}>
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-2 text-gray-700">Loading map...</p>
+      <div className={`flex flex-col items-center justify-center bg-gray-100 h-full ${className}`}>
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-2" />
+        <p className="text-gray-700 text-center">Loading map...</p>
       </div>
     );
   }
   
-  if (error) {
+  // Error state
+  if (hasError) {
     return (
       <div className={`flex flex-col items-center justify-center bg-gray-100 h-full p-4 ${className}`}>
-        <p className="text-red-500 text-lg font-medium">{error}</p>
-        <p className="text-gray-600 mt-2">
+        <MapIcon className="h-16 w-16 text-red-500 mb-4" />
+        <p className="text-red-500 text-lg font-medium text-center">
+          Unable to load the map
+        </p>
+        <p className="text-gray-600 mt-2 text-center">
           Please check your internet connection and try again.
         </p>
       </div>
     );
   }
   
+  // Render map container
   return (
-    <div className={`w-full h-full ${className}`}>
-      <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+    <div className={`relative w-full h-full ${className}`}>
+      <div 
+        ref={mapContainerRef} 
+        className="absolute inset-0 w-full h-full bg-gray-100" 
+      />
     </div>
   );
 }
