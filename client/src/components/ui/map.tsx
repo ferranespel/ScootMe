@@ -26,9 +26,13 @@ interface MapProps {
 }
 
 export function Map({ scooters, userLocation, onScooterSelect, className = '' }: MapProps) {
+  // Create refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const scriptLoadedRef = useRef<boolean>(false);
+  
+  // States
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -47,8 +51,8 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
 
     return new Promise<void>((resolve, reject) => {
       try {
-        // Get API key from environment
-        const apiKey = import.meta.env.GOOGLE_MAPS_API_KEY;
+        // Use the known working API key directly
+        const apiKey = "AIzaSyBCZRjiJ5OcOqlAfySG56ExYIcJ-9DLo4E";
         
         // Create callback function that will be called when the script loads
         window.initMap = () => {
@@ -190,42 +194,94 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
   useEffect(() => {
     console.log("Map component mounted");
     
-    let isMounted = true;
-    
-    const setupMap = async () => {
+    // Direct DOM approach - create the map directly in this component
+    const createMapDirectly = () => {
       try {
-        await loadGoogleMapsScript();
-        
-        if (isMounted) {
-          console.log("Proceeding to initialize map");
-          // Short delay to ensure DOM is ready
-          setTimeout(() => {
-            if (isMounted) {
-              initializeMap();
-            }
-          }, 100);
-        }
-      } catch (error) {
-        console.error("Map setup failed:", error);
-        if (isMounted) {
+        if (!window.google || !window.google.maps) {
+          console.error("Google Maps not loaded yet");
           setHasError(true);
           setIsLoading(false);
+          return;
         }
+        
+        // Get map container
+        const container = document.getElementById('google-map-container');
+        if (!container) {
+          console.error("Map container not found");
+          setHasError(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log("Creating map directly in useEffect");
+        
+        // Default location (United States - centered on continental US)
+        const defaultCenter = { lat: 39.8283, lng: -98.5795 };
+        
+        // Create the map
+        const map = new window.google.maps.Map(container, {
+          center: defaultCenter,
+          zoom: 4,
+          disableDefaultUI: true,
+          zoomControl: true,
+        });
+        
+        googleMapRef.current = map;
+        setMapLoaded(true);
+        setIsLoading(false);
+        console.log("Map initialized successfully directly");
+      } catch (error) {
+        console.error("Error initializing map directly:", error);
+        setHasError(true);
+        setIsLoading(false);
       }
     };
     
+    // Load script and create map
+    const setupMap = async () => {
+      if (scriptLoadedRef.current) {
+        createMapDirectly();
+        return;
+      }
+      
+      try {
+        // Add script tag
+        const apiKey = "AIzaSyBCZRjiJ5OcOqlAfySG56ExYIcJ-9DLo4E";
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
+        script.async = true;
+        
+        script.onload = () => {
+          console.log("Google Maps script loaded manually");
+          scriptLoadedRef.current = true;
+          createMapDirectly();
+        };
+        
+        script.onerror = () => {
+          console.error("Failed to load Google Maps script");
+          setHasError(true);
+          setIsLoading(false);
+        };
+        
+        document.head.appendChild(script);
+      } catch (error) {
+        console.error("Map setup failed:", error);
+        setHasError(true);
+        setIsLoading(false);
+      }
+    };
+    
+    // Run setup
     setupMap();
     
+    // Cleanup function
     return () => {
-      isMounted = false;
-      
-      // Cleanup markers
       if (markersRef.current) {
         markersRef.current.forEach(marker => marker.setMap(null));
         markersRef.current = [];
       }
     };
-  }, [loadGoogleMapsScript, initializeMap]);
+  }, []);
   
   // Update markers when scooters or user location changes
   useEffect(() => {

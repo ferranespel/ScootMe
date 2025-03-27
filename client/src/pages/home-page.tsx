@@ -200,16 +200,14 @@ export default function HomePage() {
   return (
     <MainLayout>
       <div className="relative h-full">
-        {/* Map View with key to force remount */}
-        <div className="h-full w-full" id="map-container">
-          <Map 
-            key="mainMap"
-            scooters={scooters || []}
-            userLocation={userLocation}
-            onScooterSelect={handleScooterSelect}
-            className="h-full w-full"
-          />
-        </div>
+        {/* Map View */}
+        <Map 
+          key={Date.now().toString()} // Force remount with unique key
+          scooters={scooters || []}
+          userLocation={userLocation}
+          onScooterSelect={handleScooterSelect}
+          className="h-full w-full"
+        />
         
         {/* QR Code Scanner Button */}
         <Button 
