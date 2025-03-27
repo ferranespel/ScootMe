@@ -72,60 +72,108 @@ export class MemStorage implements IStorage {
       latitude: 64.1466,
       longitude: -21.9426
     };
-    
-    // Define areas across Greater Reykjavik for more realistic distribution
-    const areas = [
-      // Central Reykjavik
-      { name: "Downtown", center: { latitude: 64.1466, longitude: -21.9426 }, radius: 0.005 },
-      { name: "Hallgrímskirkja", center: { latitude: 64.1482, longitude: -21.9376 }, radius: 0.004 },
-      { name: "Laugavegur", center: { latitude: 64.1429, longitude: -21.9268 }, radius: 0.006 },
-      { name: "Harpa", center: { latitude: 64.1499, longitude: -21.9507 }, radius: 0.003 },
-      { name: "University", center: { latitude: 64.1407, longitude: -21.9443 }, radius: 0.004 },
-      { name: "National Museum", center: { latitude: 64.1384, longitude: -21.9532 }, radius: 0.003 },
-      { name: "Tjörnin", center: { latitude: 64.1390, longitude: -21.9246 }, radius: 0.004 },
-      { name: "City Hall", center: { latitude: 64.1435, longitude: -21.9310 }, radius: 0.003 },
-      { name: "Austurvöllur", center: { latitude: 64.1451, longitude: -21.9355 }, radius: 0.002 },
-      { name: "Vesturbær", center: { latitude: 64.1383, longitude: -21.9607 }, radius: 0.007 },
-      { name: "BSÍ", center: { latitude: 64.1399, longitude: -21.9326 }, radius: 0.003 },
-      { name: "Hlemmur", center: { latitude: 64.1431, longitude: -21.9151 }, radius: 0.005 },
+
+    // Define land-only areas (streets) with careful coordinates to avoid ocean
+    const streets = [
+      // Central Reykjavik (land-only)
+      { name: "Downtown", street_points: [
+        { latitude: 64.1466, longitude: -21.9426 },  // City center
+        { latitude: 64.1475, longitude: -21.9410 },  // Austurstræti
+        { latitude: 64.1480, longitude: -21.9390 },  // Lækjargata
+        { latitude: 64.1472, longitude: -21.9370 },  // Bankastræti
+      ]},
+      { name: "Hallgrímskirkja", street_points: [
+        { latitude: 64.1418, longitude: -21.9267 },  // Skólavörðustígur
+        { latitude: 64.1426, longitude: -21.9272 },  // Frakkastígur
+        { latitude: 64.1432, longitude: -21.9262 },  // Bergstaðastræti
+      ]},
+      { name: "Laugavegur", street_points: [
+        { latitude: 64.1429, longitude: -21.9268 },  // Main street
+        { latitude: 64.1425, longitude: -21.9240 },  // East end
+        { latitude: 64.1435, longitude: -21.9200 },  // Hlemmur area
+      ]},
       
-      // Expanded areas
-      { name: "Kópavogur", center: { latitude: 64.1031, longitude: -21.9026 }, radius: 0.015 },
-      { name: "Kópavogur Mall", center: { latitude: 64.1012, longitude: -21.8897 }, radius: 0.008 },
-      { name: "Smáralind", center: { latitude: 64.1006, longitude: -21.8886 }, radius: 0.005 },
-      { name: "Kársnes", center: { latitude: 64.1119, longitude: -21.9424 }, radius: 0.010 },
+      // Kópavogur (land-only coordinates)
+      { name: "Kópavogur", street_points: [
+        { latitude: 64.1031, longitude: -21.9026 },  // Main road
+        { latitude: 64.1045, longitude: -21.9038 },  // Residential area
+        { latitude: 64.1025, longitude: -21.9050 },  // Shopping district
+      ]},
+      { name: "Kópavogur Mall", street_points: [
+        { latitude: 64.1012, longitude: -21.8897 },
+        { latitude: 64.1018, longitude: -21.8905 },
+        { latitude: 64.1008, longitude: -21.8890 },
+      ]},
       
-      { name: "Árbær", center: { latitude: 64.1156, longitude: -21.8003 }, radius: 0.012 },
-      { name: "Árbæjarsafn", center: { latitude: 64.1172, longitude: -21.7825 }, radius: 0.005 },
+      // Kársnes (carefully chosen land-only coordinates)
+      { name: "Kársnes", street_points: [
+        { latitude: 64.1128, longitude: -21.9361 },  // Kársnesbraut
+        { latitude: 64.1123, longitude: -21.9355 },  // Northern residential area
+        { latitude: 64.1116, longitude: -21.9340 },  // Central street
+        { latitude: 64.1109, longitude: -21.9322 },  // School area
+        { latitude: 64.1105, longitude: -21.9280 },  // Eastern part
+      ]},
       
-      { name: "Grafarvogur", center: { latitude: 64.1361, longitude: -21.7785 }, radius: 0.015 },
-      { name: "Grafarholt", center: { latitude: 64.1242, longitude: -21.7554 }, radius: 0.012 },
-      { name: "Spöngin", center: { latitude: 64.1406, longitude: -21.7935 }, radius: 0.006 },
+      // Árbær (land-only)
+      { name: "Árbær", street_points: [
+        { latitude: 64.1156, longitude: -21.8003 },
+        { latitude: 64.1164, longitude: -21.8012 },
+        { latitude: 64.1150, longitude: -21.7995 },
+      ]},
       
-      { name: "Laugadalur", center: { latitude: 64.1399, longitude: -21.8733 }, radius: 0.012 },
-      { name: "Laugardalur Park", center: { latitude: 64.1384, longitude: -21.8857 }, radius: 0.008 },
+      // Grafarvogur (land-only)
+      { name: "Grafarvogur", street_points: [
+        { latitude: 64.1361, longitude: -21.7785 },
+        { latitude: 64.1370, longitude: -21.7795 },
+        { latitude: 64.1355, longitude: -21.7775 },
+      ]},
       
-      { name: "Seltjarnarnes", center: { latitude: 64.1557, longitude: -22.0016 }, radius: 0.010 },
-      { name: "Garðabær", center: { latitude: 64.0891, longitude: -21.9235 }, radius: 0.012 },
-      { name: "Hafnarfjörður", center: { latitude: 64.0671, longitude: -21.9573 }, radius: 0.015 },
+      // Laugadalur (land-only)
+      { name: "Laugadalur", street_points: [
+        { latitude: 64.1399, longitude: -21.8733 },
+        { latitude: 64.1405, longitude: -21.8740 },
+        { latitude: 64.1392, longitude: -21.8720 },
+      ]},
       
-      { name: "Mosfellsbær", center: { latitude: 64.1670, longitude: -21.7020 }, radius: 0.012 },
-      { name: "Breiðholt", center: { latitude: 64.1038, longitude: -21.8330 }, radius: 0.014 },
-      { name: "Kringlan Mall", center: { latitude: 64.1295, longitude: -21.8877 }, radius: 0.005 }
+      // Laugardalur Park (land-only)
+      { name: "Laugardalur Park", street_points: [
+        { latitude: 64.1384, longitude: -21.8857 },
+        { latitude: 64.1390, longitude: -21.8865 },
+        { latitude: 64.1378, longitude: -21.8850 },
+      ]},
+      
+      // Breiðholt (land-only)
+      { name: "Breiðholt", street_points: [
+        { latitude: 64.1038, longitude: -21.8330 },
+        { latitude: 64.1045, longitude: -21.8340 },
+        { latitude: 64.1030, longitude: -21.8320 },
+      ]},
+      
+      // Add more carefully placed street points to cover the Greater Reykjavik area
+      { name: "Kringlan Mall", street_points: [
+        { latitude: 64.1295, longitude: -21.8877 },
+        { latitude: 64.1300, longitude: -21.8885 },
+        { latitude: 64.1290, longitude: -21.8870 },
+      ]}
     ];
     
     // Generate 250 scooters
     const scooters: InsertScooter[] = [];
     
     for (let i = 1; i <= 250; i++) {
-      // Choose a random area
-      const area = areas[Math.floor(Math.random() * areas.length)];
+      // Choose a random street area
+      const area = streets[Math.floor(Math.random() * streets.length)];
       
-      // Generate a random position within the area radius
-      const angle = Math.random() * 2 * Math.PI;
-      const distance = Math.random() * area.radius;
-      const latitude = area.center.latitude + (distance * Math.cos(angle));
-      const longitude = area.center.longitude + (distance * Math.sin(angle));
+      // Choose a random street point from this area
+      const streetPoint = area.street_points[Math.floor(Math.random() * area.street_points.length)];
+      
+      // Add a very small random offset to avoid all scooters being exactly on the street points
+      // Small enough to keep them on streets, but with some variation
+      const latOffset = (Math.random() - 0.5) * 0.0008;  // ~50 meters max
+      const lngOffset = (Math.random() - 0.5) * 0.0008;  // ~50 meters max
+      
+      const latitude = streetPoint.latitude + latOffset;
+      const longitude = streetPoint.longitude + lngOffset;
       
       // Generate a random battery level (20-100%)
       const batteryLevel = Math.floor(Math.random() * 81) + 20;

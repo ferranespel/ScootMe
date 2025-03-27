@@ -31,18 +31,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Special route to add scooters to Kársnes (temporary for distribution)
   app.post("/api/karsnes-scooters", async (req, res) => {
     try {
-      // Kársnes area coordinates
-      const karsnesCenter = { latitude: 64.1119, longitude: -21.9424 };
-      const radius = 0.010;
+      // Kársnes land-only locations (carefully selected street coordinates)
+      const karsnesStreets = [
+        { latitude: 64.1128, longitude: -21.9361 },  // Kársnesbraut
+        { latitude: 64.1123, longitude: -21.9355 },  // Northern residential area
+        { latitude: 64.1116, longitude: -21.9340 },  // Central street
+        { latitude: 64.1109, longitude: -21.9322 },  // School area
+        { latitude: 64.1105, longitude: -21.9298 },  // Eastern part
+        { latitude: 64.1100, longitude: -21.9318 },  // Residential area
+        { latitude: 64.1124, longitude: -21.9335 },  // Main road intersection
+        { latitude: 64.1118, longitude: -21.9344 },  // Bus stop
+        { latitude: 64.1115, longitude: -21.9325 },  // Shopping area
+        { latitude: 64.1107, longitude: -21.9360 }   // Western point
+      ];
+      
       const numScooters = 25; // Add 25 scooters to Kársnes
       const addedScooters = [];
       
       for (let i = 0; i < numScooters; i++) {
-        // Generate a random position within the area radius
-        const angle = Math.random() * 2 * Math.PI;
-        const distance = Math.random() * radius;
-        const latitude = karsnesCenter.latitude + (distance * Math.cos(angle));
-        const longitude = karsnesCenter.longitude + (distance * Math.sin(angle));
+        // Choose a random street location from the Kársnes streets array
+        const streetLocation = karsnesStreets[Math.floor(Math.random() * karsnesStreets.length)];
+        
+        // Add a small offset to avoid all scooters being exactly at the same spot
+        // Keeping the offset small (~25 meters max) to ensure they stay on streets
+        const latOffset = (Math.random() - 0.5) * 0.0004;
+        const lngOffset = (Math.random() - 0.5) * 0.0004;
+        
+        const latitude = streetLocation.latitude + latOffset;
+        const longitude = streetLocation.longitude + lngOffset;
         
         // Generate a random battery level (20-100%)
         const batteryLevel = Math.floor(Math.random() * 81) + 20;
@@ -65,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(201).json({ 
-        message: `Successfully added ${numScooters} scooters to Kársnes area`,
+        message: `Successfully added ${numScooters} scooters to Kársnes streets`,
         scooters: addedScooters
       });
     } catch (error) {
