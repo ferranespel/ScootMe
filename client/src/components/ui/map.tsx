@@ -1,7 +1,16 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Loader2, Plus, Minus, Locate } from 'lucide-react';
 
-// Mock map type definitions
+// Extend Window interface to include google
+declare global {
+  interface Window {
+    google: any;
+    initMap: () => void;
+    GOOGLE_MAPS_API_KEY?: string;
+  }
+}
+
+// Map type definitions
 interface GoogleMap {
   setCenter: (position: { lat: number, lng: number }) => void;
   setZoom: (zoom: number) => void;
@@ -28,6 +37,39 @@ interface MapProps {
   className?: string;
 }
 
+// Function to load Google Maps API
+const loadGoogleMapsApi = () => {
+  return new Promise<void>((resolve, reject) => {
+    if (window.google && window.google.maps) {
+      resolve();
+      return;
+    }
+
+    // Get API key from environment
+    // We know it's already available since we asked for it, but we add this check for type safety
+    const apiKey = window.GOOGLE_MAPS_API_KEY || import.meta.env.GOOGLE_MAPS_API_KEY;
+    
+    if (!apiKey) {
+      console.error("Google Maps API key is missing");
+      reject(new Error("Google Maps API key is missing"));
+      return;
+    }
+
+    window.initMap = () => {
+      resolve();
+    };
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => {
+      reject(new Error("Failed to load Google Maps API"));
+    };
+    document.head.appendChild(script);
+  });
+};
+
 export function Map({ scooters, userLocation, onScooterSelect, className = '' }: MapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<GoogleMap | null>(null);
@@ -42,13 +84,9 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
     const initMap = async () => {
       try {
         if (!mapRef.current) return;
-
-        // Check if Google Maps API is loaded
-        if (!window.google || !window.google.maps) {
-          setError("Google Maps could not be loaded");
-          setLoading(false);
-          return;
-        }
+        
+        // Load Google Maps API
+        await loadGoogleMapsApi();
 
         const defaultLocation = userLocation || { latitude: 64.1466, longitude: -21.9426 }; // Reykjavik, Iceland by default
 
