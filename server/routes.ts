@@ -27,6 +27,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get scooters" });
     }
   });
+  
+  // Special route to add scooters to Kársnes (temporary for distribution)
+  app.post("/api/karsnes-scooters", async (req, res) => {
+    try {
+      // Kársnes area coordinates
+      const karsnesCenter = { latitude: 64.1119, longitude: -21.9424 };
+      const radius = 0.010;
+      const numScooters = 25; // Add 25 scooters to Kársnes
+      const addedScooters = [];
+      
+      for (let i = 0; i < numScooters; i++) {
+        // Generate a random position within the area radius
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = Math.random() * radius;
+        const latitude = karsnesCenter.latitude + (distance * Math.cos(angle));
+        const longitude = karsnesCenter.longitude + (distance * Math.sin(angle));
+        
+        // Generate a random battery level (20-100%)
+        const batteryLevel = Math.floor(Math.random() * 81) + 20;
+        
+        // Generate scooter ID (letter + 3 digits)
+        const letter = String.fromCharCode(75); // Letter 'K' for Kársnes
+        const number = String(Math.floor(Math.random() * 1000)).padStart(3, '0'); // 000-999
+        const scooterId = `${letter}${number}`;
+        
+        // Create scooter
+        const scooter = await storage.createScooter({
+          scooterId,
+          batteryLevel,
+          isAvailable: true,
+          latitude,
+          longitude
+        });
+        
+        addedScooters.push(scooter);
+      }
+      
+      res.status(201).json({ 
+        message: `Successfully added ${numScooters} scooters to Kársnes area`,
+        scooters: addedScooters
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add Kársnes scooters" });
+    }
+  });
 
   app.get("/api/scooters/:id", async (req, res) => {
     try {

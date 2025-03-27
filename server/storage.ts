@@ -93,6 +93,7 @@ export class MemStorage implements IStorage {
       { name: "Kópavogur", center: { latitude: 64.1031, longitude: -21.9026 }, radius: 0.015 },
       { name: "Kópavogur Mall", center: { latitude: 64.1012, longitude: -21.8897 }, radius: 0.008 },
       { name: "Smáralind", center: { latitude: 64.1006, longitude: -21.8886 }, radius: 0.005 },
+      { name: "Kársnes", center: { latitude: 64.1119, longitude: -21.9424 }, radius: 0.010 },
       
       { name: "Árbær", center: { latitude: 64.1156, longitude: -21.8003 }, radius: 0.012 },
       { name: "Árbæjarsafn", center: { latitude: 64.1172, longitude: -21.7825 }, radius: 0.005 },
