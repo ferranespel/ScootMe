@@ -24,95 +24,83 @@ interface MapProps {
   className?: string;
 }
 
-// Simple function to check if Google Maps is loaded
-const isGoogleMapsLoaded = () => {
-  return window.google && window.google.maps;
-};
-
 export function Map({ scooters, userLocation, onScooterSelect, className = '' }: MapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Initialize and render the map
+  // Simple wrapper for the original Google Map component
   useEffect(() => {
-    console.log("Map component mounted");
+    // Set a short delay to ensure DOM is ready and Google Maps is loaded
+    const timer = setTimeout(() => {
+      initMap();
+    }, 500);
     
-    // Check if element exists
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
+  // Function to initialize the map
+  const initMap = () => {
     if (!mapRef.current) {
       console.error("Map container element not found");
+      setError("Map container not available");
+      setLoading(false);
       return;
     }
     
-    // Set a timeout to wait for Google Maps to load
-    const timeoutId = setTimeout(() => {
-      if (!isGoogleMapsLoaded()) {
-        console.error("Google Maps failed to load within timeout");
-        setError("Failed to load Google Maps API");
-        setLoading(false);
-      }
-    }, 10000);
+    if (!window.google || !window.google.maps) {
+      console.error("Google Maps API not loaded");
+      setError("Failed to load Google Maps");
+      setLoading(false);
+      return;
+    }
     
-    // Try to initialize the map
-    const initializeMap = () => {
-      if (!isGoogleMapsLoaded()) {
-        console.log("Google Maps not yet loaded, waiting...");
-        setTimeout(initializeMap, 500);
-        return;
-      }
+    try {
+      console.log("Initializing map");
       
-      console.log("Google Maps loaded, initializing map...");
-      clearTimeout(timeoutId);
+      // Default location (Reykjavik, Iceland)
+      const center = userLocation 
+        ? { lat: userLocation.latitude, lng: userLocation.longitude }
+        : { lat: 64.1466, lng: -21.9426 };
       
-      try {
-        // Create a map centered on Reykjavik, Iceland
-        const center = { lat: 64.1466, lng: -21.9426 };
-        const map = new window.google.maps.Map(mapRef.current, {
-          center,
-          zoom: 14,
-          disableDefaultUI: true
+      // Create the map
+      const map = new window.google.maps.Map(mapRef.current, {
+        center,
+        zoom: 14,
+        disableDefaultUI: true,
+      });
+      
+      // Add markers for scooters
+      scooters.forEach(scooter => {
+        const marker = new window.google.maps.Marker({
+          position: { lat: scooter.latitude, lng: scooter.longitude },
+          map,
+          title: `Scooter #${scooter.scooterId}`,
         });
         
-        console.log("Map created successfully");
-        
-        // Add markers for each scooter
-        scooters.forEach(scooter => {
-          const marker = new window.google.maps.Marker({
-            position: { lat: scooter.latitude, lng: scooter.longitude },
-            map,
-            title: `Scooter #${scooter.scooterId}`,
-          });
-          
-          // Add click listener
-          marker.addListener('click', () => {
-            if (onScooterSelect) {
-              onScooterSelect(scooter);
-            }
-          });
+        marker.addListener('click', () => {
+          if (onScooterSelect) {
+            onScooterSelect(scooter);
+          }
         });
-        
-        setLoading(false);
-      } catch (err) {
-        console.error("Error initializing map:", err);
-        setError("Error initializing map");
-        setLoading(false);
-      }
-    };
-    
-    // Start the initialization process
-    initializeMap();
-    
-    // Cleanup
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [scooters, onScooterSelect]);
+      });
+      
+      // Success!
+      setLoading(false);
+      
+    } catch (err) {
+      console.error("Error initializing map:", err);
+      setError("Error initializing map");
+      setLoading(false);
+    }
+  };
   
   if (loading) {
     return (
       <div className={`flex items-center justify-center bg-gray-100 h-full ${className}`}>
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-2">Loading map...</p>
+        <p className="ml-2 text-gray-700">Loading map...</p>
       </div>
     );
   }
@@ -129,7 +117,7 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
   }
   
   return (
-    <div className={`w-full h-full ${className}`} style={{ position: 'relative' }}>
+    <div className={`w-full h-full ${className}`}>
       <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );
