@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ScooterCard } from '@/components/scooter-card';
-import { Map } from '@/components/ui/map';
+import { LeafletMap } from '@/components/ui/leaflet-map';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
@@ -201,7 +201,7 @@ export default function HomePage() {
     <MainLayout>
       <div className="relative h-full">
         {/* Map View */}
-        <Map 
+        <LeafletMap 
           key={Date.now().toString()} // Force remount with unique key
           scooters={scooters || []}
           userLocation={userLocation}
