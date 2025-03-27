@@ -20,7 +20,11 @@ import {
   Edit,
   KeyRound,
   Camera,
-  Phone
+  Phone,
+  CheckCircle,
+  XCircle,
+  Mail,
+  Check
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -61,17 +65,31 @@ export default function ProfilePage() {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [profilePictureDialogOpen, setProfilePictureDialogOpen] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState('');
+  const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationMethod, setVerificationMethod] = useState<'email' | 'phone'>('email');
   
   // Get profile data
   const { data: profileData, isLoading: isProfileLoading } = useQuery<{
     id: number;
     fullName: string;
     email: string;
+    isEmailVerified: boolean;
     phoneNumber?: string;
+    isPhoneVerified: boolean;
     profilePicture?: string;
     balance: number;
   }>({
     queryKey: ['/api/profile'],
+    enabled: !!user, // Only fetch if user is logged in
+  });
+  
+  // Get verification status
+  const { data: verificationStatus } = useQuery<{
+    email: { address: string; verified: boolean };
+    phone: { number: string | null; verified: boolean | null };
+  }>({
+    queryKey: ['/api/verification/status'],
     enabled: !!user, // Only fetch if user is logged in
   });
   
@@ -178,6 +196,51 @@ export default function ProfilePage() {
     },
   });
   
+  // Verification mutations
+  const requestVerificationMutation = useMutation({
+    mutationFn: async (method: 'email' | 'phone') => {
+      const res = await apiRequest('POST', '/api/verification/request', { method });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Verification Code Sent',
+        description: `We've sent a verification code to your ${verificationMethod === 'email' ? 'email address' : 'phone number'}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Verification Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+  
+  const verifyContactMutation = useMutation({
+    mutationFn: async ({ code, method }: { code: string; method: 'email' | 'phone' }) => {
+      const res = await apiRequest('POST', `/api/verification/${method}`, { code });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Verification Successful',
+        description: `Your ${verificationMethod === 'email' ? 'email address' : 'phone number'} has been verified`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/verification/status'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
+      setVerificationDialogOpen(false);
+      setVerificationCode('');
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Verification Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+  
   // Form handlers
   const onUpdateProfileSubmit = (data: UpdateProfileData) => {
     updateProfileMutation.mutate(data);
@@ -211,7 +274,7 @@ export default function ProfilePage() {
   };
   
   // Format phone number for display
-  const formatPhoneNumber = (phone?: string) => {
+  const formatPhoneNumber = (phone?: string | null) => {
     if (!phone) return '';
     
     // Remove all non-digits
@@ -252,6 +315,12 @@ export default function ProfilePage() {
     setSupportDialogOpen(false);
   };
 
+  // Function to handle verification
+  const handleVerification = (method: 'email' | 'phone') => {
+    setVerificationMethod(method);
+    setVerificationDialogOpen(true);
+  };
+  
   const profileMenuItems = [
     {
       icon: User,
@@ -262,6 +331,32 @@ export default function ProfilePage() {
       icon: CreditCard,
       label: "Payment Methods",
       onClick: () => navigate("/wallet"),
+    },
+    {
+      icon: Mail,
+      label: "Verify Contact Information",
+      onClick: () => {
+        const isEmailVerified = verificationStatus?.email.verified;
+        const isPhoneVerified = verificationStatus?.phone.verified;
+        
+        if (isEmailVerified && (isPhoneVerified || !verificationStatus?.phone.number)) {
+          toast({
+            title: "Already Verified",
+            description: "Your contact information is already verified!",
+          });
+          return;
+        }
+        
+        // Choose which method needs verification
+        if (!isEmailVerified) {
+          handleVerification('email');
+        } else if (!isPhoneVerified && verificationStatus?.phone.number) {
+          handleVerification('phone');
+        }
+      },
+      badge: verificationStatus?.email.verified && 
+             (verificationStatus?.phone.verified || !verificationStatus?.phone.number) ? 
+             "Verified" : "Action Required"
     },
     {
       icon: Bell,
@@ -318,11 +413,38 @@ export default function ProfilePage() {
               </div>
               <h2 className="text-xl font-semibold">{user?.fullName}</h2>
               <div className="flex flex-col items-center mt-1">
-                <p className="text-gray-500">{user?.email}</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-gray-500">{user?.email}</p>
+                  {verificationStatus?.email.verified ? (
+                    <span className="text-green-500" title="Email verified"><CheckCircle className="h-3 w-3" /></span>
+                  ) : (
+                    <span 
+                      className="text-yellow-500 cursor-pointer" 
+                      title="Email not verified. Click to verify."
+                      onClick={() => handleVerification('email')}
+                    >
+                      <XCircle className="h-3 w-3" />
+                    </span>
+                  )}
+                </div>
+                
                 {user?.phoneNumber && (
-                  <p className="text-gray-500 flex items-center gap-1 mt-1">
-                    <Phone className="h-3 w-3" /> {formatPhoneNumber(user.phoneNumber)}
-                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <p className="text-gray-500 flex items-center gap-1">
+                      <Phone className="h-3 w-3" /> {formatPhoneNumber(user.phoneNumber)}
+                    </p>
+                    {verificationStatus?.phone.verified ? (
+                      <span className="text-green-500" title="Phone verified"><CheckCircle className="h-3 w-3" /></span>
+                    ) : (
+                      <span 
+                        className="text-yellow-500 cursor-pointer" 
+                        title="Phone not verified. Click to verify."
+                        onClick={() => handleVerification('phone')}
+                      >
+                        <XCircle className="h-3 w-3" />
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="flex items-center gap-2 mt-4">
@@ -364,7 +486,19 @@ export default function ProfilePage() {
                   </div>
                   <span>{item.label}</span>
                 </div>
-                <ChevronRight className="h-5 w-5 text-gray-400" />
+                <div className="flex items-center">
+                  {item.badge && (
+                    <span className={`mr-2 text-xs px-2 py-1 rounded-full ${
+                      item.badge === "Verified" 
+                        ? "bg-green-100 text-green-800" 
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}>
+                      {item.badge === "Verified" && <Check className="inline-block h-3 w-3 mr-1" />}
+                      {item.badge}
+                    </span>
+                  )}
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                </div>
               </button>
             ))}
           </CardContent>
@@ -626,6 +760,98 @@ export default function ProfilePage() {
                   </>
                 ) : (
                   "Update Picture"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Verification Dialog */}
+        <Dialog open={verificationDialogOpen} onOpenChange={setVerificationDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {verificationMethod === 'email' ? 'Verify Email Address' : 'Verify Phone Number'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4 space-y-6">
+              <div className="flex items-center justify-center">
+                {verificationMethod === 'email' ? (
+                  <div className="bg-primary/10 rounded-full p-4">
+                    <Mail className="h-10 w-10 text-primary" />
+                  </div>
+                ) : (
+                  <div className="bg-primary/10 rounded-full p-4">
+                    <Phone className="h-10 w-10 text-primary" />
+                  </div>
+                )}
+              </div>
+              
+              <div className="text-center">
+                <h3 className="text-lg font-medium">
+                  {verificationMethod === 'email' 
+                    ? 'Verify your email address' 
+                    : 'Verify your phone number'}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {verificationMethod === 'email'
+                    ? `We'll send a verification code to ${verificationStatus?.email.address || user?.email}`
+                    : `We'll send a verification code to ${formatPhoneNumber(verificationStatus?.phone.number || user?.phoneNumber || '')}`}
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="verificationCode">Verification Code</Label>
+                  <Input
+                    id="verificationCode"
+                    placeholder="Enter your verification code"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                  />
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => requestVerificationMutation.mutate(verificationMethod)}
+                    disabled={requestVerificationMutation.isPending}
+                  >
+                    {requestVerificationMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      'Send Code'
+                    )}
+                  </Button>
+                  
+                  <p className="text-xs text-gray-500">
+                    Didn't receive the code? Wait 1 minute before requesting again.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setVerificationDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => verifyContactMutation.mutate({ 
+                  code: verificationCode,
+                  method: verificationMethod 
+                })}
+                disabled={!verificationCode.trim() || verifyContactMutation.isPending}
+              >
+                {verifyContactMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  'Verify'
                 )}
               </Button>
             </DialogFooter>

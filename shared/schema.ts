@@ -7,8 +7,14 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   email: text("email").notNull(),
+  isEmailVerified: boolean("is_email_verified").default(false).notNull(),
+  emailVerificationCode: text("email_verification_code"),
+  emailVerificationExpiry: timestamp("email_verification_expiry"),
   fullName: text("full_name").notNull(),
   phoneNumber: text("phone_number"),
+  isPhoneVerified: boolean("is_phone_verified").default(false).notNull(),
+  phoneVerificationCode: text("phone_verification_code"),
+  phoneVerificationExpiry: timestamp("phone_verification_expiry"),
   profilePicture: text("profile_picture"),
   balance: doublePrecision("balance").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -157,4 +163,21 @@ export const changePasswordSchema = z.object({
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
+});
+
+// Email verification schema
+export const verifyEmailSchema = z.object({
+  code: z.string().length(6, "Verification code must be 6 digits")
+});
+
+// Phone verification schema
+export const verifyPhoneSchema = z.object({
+  code: z.string().length(6, "Verification code must be 6 digits")
+});
+
+// Request for verification code schema
+export const requestVerificationSchema = z.object({
+  method: z.enum(["email", "phone"], {
+    errorMap: () => ({ message: "Method must be either email or phone" }),
+  })
 });

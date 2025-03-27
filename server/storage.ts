@@ -14,6 +14,10 @@ export interface IStorage {
   updateUserBalance(userId: number, amount: number): Promise<User | undefined>;
   updateUserPassword(userId: number, newPassword: string): Promise<User | undefined>;
   
+  // Verification methods
+  verifyUserEmail(userId: number, code: string): Promise<boolean>;
+  verifyUserPhone(userId: number, code: string): Promise<boolean>;
+  
   // Scooter methods
   getScooters(): Promise<Scooter[]>;
   getScooter(id: number): Promise<Scooter | undefined>;
@@ -220,7 +224,15 @@ export class MemStorage implements IStorage {
       phoneNumber: user.phoneNumber || null,
       profilePicture: user.profilePicture || null,
       balance: user.balance || 0, // Ensure balance is never undefined
-      createdAt: new Date() // Add the createdAt timestamp
+      createdAt: new Date(), // Add the createdAt timestamp
+      
+      // Add verification fields
+      isEmailVerified: false,
+      emailVerificationCode: null,
+      emailVerificationExpiry: null,
+      isPhoneVerified: false,
+      phoneVerificationCode: null,
+      phoneVerificationExpiry: null
     };
     this.users.set(id, newUser);
     return newUser;
@@ -264,6 +276,53 @@ export class MemStorage implements IStorage {
     };
     this.users.set(userId, updatedUser);
     return updatedUser;
+  }
+
+  // Verification methods
+  async verifyUserEmail(userId: number, code: string): Promise<boolean> {
+    const user = await this.getUser(userId);
+    if (!user) return false;
+    
+    // Check if code matches and is not expired
+    if (!user.emailVerificationCode || !user.emailVerificationExpiry) {
+      return false;
+    }
+    
+    if (user.emailVerificationCode === code && 
+        new Date() < new Date(user.emailVerificationExpiry)) {
+      // Mark email as verified
+      await this.updateUser(userId, {
+        isEmailVerified: true,
+        emailVerificationCode: null,
+        emailVerificationExpiry: null
+      });
+      return true;
+    }
+    
+    return false;
+  }
+  
+  async verifyUserPhone(userId: number, code: string): Promise<boolean> {
+    const user = await this.getUser(userId);
+    if (!user) return false;
+    
+    // Check if code matches and is not expired
+    if (!user.phoneVerificationCode || !user.phoneVerificationExpiry) {
+      return false;
+    }
+    
+    if (user.phoneVerificationCode === code && 
+        new Date() < new Date(user.phoneVerificationExpiry)) {
+      // Mark phone as verified
+      await this.updateUser(userId, {
+        isPhoneVerified: true,
+        phoneVerificationCode: null,
+        phoneVerificationExpiry: null
+      });
+      return true;
+    }
+    
+    return false;
   }
 
   // Scooter methods

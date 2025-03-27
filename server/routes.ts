@@ -4,12 +4,21 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { 
   insertScooterSchema, insertRideSchema, updateRideSchema, 
-  insertPaymentSchema, updateUserSchema, changePasswordSchema 
+  insertPaymentSchema, updateUserSchema, changePasswordSchema,
+  verifyEmailSchema, verifyPhoneSchema, requestVerificationSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { scrypt, timingSafeEqual, randomBytes } from "crypto";
 import { promisify } from "util";
+import {
+  generateEmailVerification,
+  generatePhoneVerification,
+  sendEmailVerification,
+  sendSmsVerification,
+  markEmailAsVerified,
+  markPhoneAsVerified
+} from "./verification";
 
 // Helper to check if user is authenticated
 function isAuthenticated(req: any, res: any, next: any) {
@@ -384,6 +393,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(userWithoutPassword);
     } catch (error) {
       res.status(500).json({ message: "Failed to add balance" });
+    }
+  });
+
+  // Verification routes
+  // Request verification code
+  app.post("/api/verification/request", isAuthenticated, async (req, res) => {
+    try {
+      const { method } = requestVerificationSchema.parse(req.body);
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (method === "email") {
+        // Check if email already verified
+        if (user.isEmailVerified) {
+          return res.status(400).json({ message: "Email is already verified" });
+        }
+        
+        // Generate and store verification code
+        const code = await generateEmailVerification(user.id);
+        
+        // Send email with verification code
+        const emailSent = await sendEmailVerification(user.email, code);
+        
+        if (!emailSent) {
+          return res.status(500).json({ message: "Failed to send verification email" });
+        }
+        
+        res.json({ message: "Verification code sent to your email" });
+      } else if (method === "phone") {
+        // Check if phone number exists
+        if (!user.phoneNumber) {
+          return res.status(400).json({ message: "No phone number associated with your account" });
+        }
+        
+        // Check if phone already verified
+        if (user.isPhoneVerified) {
+          return res.status(400).json({ message: "Phone number is already verified" });
+        }
+        
+        // Generate and store verification code
+        const code = await generatePhoneVerification(user.id);
+        
+        // Send SMS with verification code
+        const smsSent = await sendSmsVerification(user.phoneNumber, code);
+        
+        if (!smsSent) {
+          return res.status(500).json({ message: "Failed to send verification SMS" });
+        }
+        
+        res.json({ message: "Verification code sent to your phone" });
+      }
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      res.status(500).json({ message: "Failed to request verification code" });
+    }
+  });
+  
+  // Verify email
+  app.post("/api/verification/email", isAuthenticated, async (req, res) => {
+    try {
+      const { code } = verifyEmailSchema.parse(req.body);
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check if already verified
+      if (user.isEmailVerified) {
+        return res.status(400).json({ message: "Email is already verified" });
+      }
+      
+      // Verify code
+      const isVerified = await storage.verifyUserEmail(user.id, code);
+      
+      if (!isVerified) {
+        return res.status(400).json({ message: "Invalid or expired verification code" });
+      }
+      
+      res.json({ message: "Email verified successfully" });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      res.status(500).json({ message: "Failed to verify email" });
+    }
+  });
+  
+  // Verify phone
+  app.post("/api/verification/phone", isAuthenticated, async (req, res) => {
+    try {
+      const { code } = verifyPhoneSchema.parse(req.body);
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check if phone exists
+      if (!user.phoneNumber) {
+        return res.status(400).json({ message: "No phone number associated with your account" });
+      }
+      
+      // Check if already verified
+      if (user.isPhoneVerified) {
+        return res.status(400).json({ message: "Phone is already verified" });
+      }
+      
+      // Verify code
+      const isVerified = await storage.verifyUserPhone(user.id, code);
+      
+      if (!isVerified) {
+        return res.status(400).json({ message: "Invalid or expired verification code" });
+      }
+      
+      res.json({ message: "Phone verified successfully" });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      res.status(500).json({ message: "Failed to verify phone" });
+    }
+  });
+  
+  // Get verification status
+  app.get("/api/verification/status", isAuthenticated, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({
+        email: {
+          address: user.email,
+          verified: user.isEmailVerified
+        },
+        phone: {
+          number: user.phoneNumber,
+          verified: user.phoneNumber ? user.isPhoneVerified : null
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get verification status" });
     }
   });
 
