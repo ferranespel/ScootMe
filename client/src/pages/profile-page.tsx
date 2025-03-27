@@ -209,6 +209,25 @@ export default function ProfilePage() {
     
     return (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
   };
+  
+  // Format phone number for display
+  const formatPhoneNumber = (phone?: string) => {
+    if (!phone) return '';
+    
+    // Remove all non-digits
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // Format based on length
+    if (digitsOnly.length === 10) {
+      return `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`;
+    } else if (digitsOnly.length > 10) {
+      // Handle international numbers
+      return `+${digitsOnly.slice(0, digitsOnly.length-10)} (${digitsOnly.slice(-10, -7)}) ${digitsOnly.slice(-7, -4)}-${digitsOnly.slice(-4)}`;
+    }
+    
+    // Return original if cannot format
+    return phone;
+  };
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -302,7 +321,7 @@ export default function ProfilePage() {
                 <p className="text-gray-500">{user?.email}</p>
                 {user?.phoneNumber && (
                   <p className="text-gray-500 flex items-center gap-1 mt-1">
-                    <Phone className="h-3 w-3" /> {user.phoneNumber}
+                    <Phone className="h-3 w-3" /> {formatPhoneNumber(user.phoneNumber)}
                   </p>
                 )}
               </div>
@@ -454,6 +473,9 @@ export default function ProfilePage() {
                     placeholder="Your phone number (optional)"
                     {...profileForm.register('phoneNumber')}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Formats: +1 (555) 123-4567, 555-123-4567, etc.
+                  </p>
                   {profileForm.formState.errors.phoneNumber && (
                     <p className="text-sm text-red-500">
                       {profileForm.formState.errors.phoneNumber.message}

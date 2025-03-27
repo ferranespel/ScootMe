@@ -112,22 +112,41 @@ export const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+// Email validation regex pattern
+// This is a more comprehensive email validation than the basic Zod email validator
+const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+// Phone number validation regex pattern - supports various international formats
+// Valid formats: +1234567890, 123-456-7890, (123) 456-7890, etc.
+const phoneRegex = /^(\+?\d{1,3})?[-. (]?\d{3}[-. )]?\d{3}[-. ]?\d{4}$/;
+
 // Registration validation schema with additional validations
 export const registerSchema = insertUserSchema.extend({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  email: z.string().email("Please enter a valid email address"),
+  email: z.string()
+    .email("Please enter a valid email address")
+    .regex(emailRegex, "Please enter a valid email address"),
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
-  phoneNumber: z.string().optional(),
+  phoneNumber: z.string()
+    .regex(phoneRegex, "Please enter a valid phone number")
+    .optional()
+    .or(z.literal('')),  // Allow empty string for optional phone
   profilePicture: z.string().optional(),
 });
 
 // User profile update schema (doesn't include password)
 export const updateUserSchema = z.object({
-  email: z.string().email("Please enter a valid email address").optional(),
+  email: z.string()
+    .email("Please enter a valid email address")
+    .regex(emailRegex, "Please enter a valid email address")
+    .optional(),
   fullName: z.string().min(2, "Full name must be at least 2 characters").optional(),
-  phoneNumber: z.string().optional(),
-  profilePicture: z.string().optional(),
+  phoneNumber: z.string()
+    .regex(phoneRegex, "Please enter a valid phone number")
+    .optional()
+    .or(z.literal('')),  // Allow empty string for optional phone
+  profilePicture: z.string().url("Please enter a valid URL").optional().or(z.literal('')),
 });
 
 // Password change schema
