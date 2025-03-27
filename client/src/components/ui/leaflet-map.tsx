@@ -45,8 +45,8 @@ function MapUpdater({ userLocation }: { userLocation?: { latitude: number; longi
     if (userLocation) {
       map.setView([userLocation.latitude, userLocation.longitude], 14);
     } else {
-      // Center on US if no user location
-      map.setView([39.8283, -98.5795], 4);
+      // Center on Reykjavik, Iceland if no user location
+      map.setView([64.1466, -21.9426], 12);
     }
   }, [map, userLocation]);
   
@@ -136,12 +136,12 @@ export function LeafletMap({ scooters, userLocation, onScooterSelect, className 
     );
   }
   
-  // Initial map center (United States)
+  // Initial map center (Reykjavik, Iceland)
   const initialCenter: [number, number] = userLocation 
     ? [userLocation.latitude, userLocation.longitude] 
-    : [39.8283, -98.5795]; // Center of US
+    : [64.1466, -21.9426]; // Center of Reykjavik
   
-  const initialZoom = userLocation ? 14 : 4;
+  const initialZoom = userLocation ? 14 : 12;
   
   // Render map
   return (
