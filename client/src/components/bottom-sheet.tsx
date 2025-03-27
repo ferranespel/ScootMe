@@ -57,7 +57,7 @@ export function BottomSheet({
       {isOpen && (
         <motion.div
           ref={sheetRef}
-          className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-lg z-20 overflow-hidden"
+          className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-lg z-5 overflow-hidden pointer-events-auto"
           initial={{ y: '100%' }}
           animate={{ 
             y: 0,

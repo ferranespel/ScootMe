@@ -189,8 +189,8 @@ export default function HomePage() {
           <span>Scan QR Code</span>
         </Button>
         
-        {/* Bottom Sheet */}
-        <BottomSheet isOpen={true} initialState="expanded" onStateChange={(expanded) => console.log('Bottom sheet state changed:', expanded)}>
+        {/* Bottom Sheet - using a lower z-index to ensure it doesn't block map interactions */}
+        <BottomSheet isOpen={true} initialState="collapsed" onStateChange={(expanded) => console.log('Bottom sheet state changed:', expanded)}>
           <Tabs defaultValue="available">
             <TabsList className="w-full mb-4 grid grid-cols-4">
               <TabsTrigger value="available" className="text-sm">Available</TabsTrigger>

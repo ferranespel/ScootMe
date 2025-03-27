@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { Loader2, MapIcon, Battery } from 'lucide-react';
+import { Loader2, MapIcon, Battery, MapPin } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Button } from '@/components/ui/button';
 
 // Fix for Leaflet marker icon issue in React
 // This is needed because Leaflet's default marker icons rely on assets that
@@ -157,15 +158,44 @@ export function LeafletMap({ scooters, userLocation, onScooterSelect, className 
   // Use a more zoomed-in view for Reykjavik
   const initialZoom = userLocation ? 14 : 12;
   
+  // Reset map view to Reykjavik function
+  const ResetViewControl = () => {
+    const map = useMap();
+    
+    const handleResetView = useCallback(() => {
+      map.setView(reykjavikCenter, 12);
+    }, [map]);
+    
+    return (
+      <div className="leaflet-top leaflet-right" style={{ top: '60px', right: '10px' }}>
+        <div className="leaflet-control">
+          <Button 
+            size="sm"
+            className="bg-white text-gray-800 hover:bg-gray-100 shadow-md"
+            onClick={handleResetView}
+          >
+            <MapPin className="mr-1 h-4 w-4" />
+            <span>Reset View</span>
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   // Render map
   return (
-    <div className={`w-full h-full ${className}`} id="map-wrapper">
+    <div className={`w-full h-full ${className} relative z-10`} id="map-wrapper">
       <MapContainer 
         center={initialCenter} 
         zoom={initialZoom} 
         style={{ width: '100%', height: '100%' }}
         zoomControl={true}
         attributionControl={false}
+        // Adding these options to ensure map is interactive
+        dragging={true}
+        scrollWheelZoom={true}
+        doubleClickZoom={true}
+        touchZoom={true}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -215,6 +245,9 @@ export function LeafletMap({ scooters, userLocation, onScooterSelect, className 
         
         {/* Component to update map view when props change */}
         <MapUpdater userLocation={userLocation} />
+        
+        {/* Reset view control */}
+        <ResetViewControl />
       </MapContainer>
     </div>
   );
