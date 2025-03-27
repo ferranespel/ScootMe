@@ -1,24 +1,11 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Loader2, Plus, Minus, Locate } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
-// Extend Window interface to include google
+// Define types
 declare global {
   interface Window {
     google: any;
-    initMap: () => void;
-    GOOGLE_MAPS_API_KEY?: string;
   }
-}
-
-// Map type definitions
-interface GoogleMap {
-  setCenter: (position: { lat: number, lng: number }) => void;
-  setZoom: (zoom: number) => void;
-}
-
-interface GoogleMapsMarker {
-  setPosition: (position: { lat: number, lng: number }) => void;
-  setMap: (map: GoogleMap | null) => void;
 }
 
 interface Scooter {
@@ -37,237 +24,113 @@ interface MapProps {
   className?: string;
 }
 
-// Function to wait for Google Maps API to load
-const waitForGoogleMapsToLoad = () => {
-  return new Promise<void>((resolve, reject) => {
-    // Check if Google Maps is already loaded
-    if (window.google && window.google.maps) {
-      console.log("Google Maps already loaded");
-      resolve();
-      return;
-    }
-
-    console.log("Waiting for Google Maps to load...");
-    
-    // Set up a timeout to avoid infinite wait
-    const timeout = setTimeout(() => {
-      reject(new Error("Google Maps API loading timeout"));
-    }, 10000); // 10 seconds timeout
-    
-    // Check every 100ms if Google Maps is loaded
-    const checkGoogleMaps = setInterval(() => {
-      if (window.google && window.google.maps) {
-        clearTimeout(timeout);
-        clearInterval(checkGoogleMaps);
-        console.log("Google Maps loaded successfully");
-        resolve();
-      }
-    }, 100);
-  });
+// Simple function to check if Google Maps is loaded
+const isGoogleMapsLoaded = () => {
+  return window.google && window.google.maps;
 };
 
 export function Map({ scooters, userLocation, onScooterSelect, className = '' }: MapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<GoogleMap | null>(null);
-  const [markers, setMarkers] = useState<{ [key: number]: GoogleMapsMarker }>({});
-  const [userMarker, setUserMarker] = useState<GoogleMapsMarker | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [zoom, setZoomLevel] = useState(15);
-
-  // Initialize map
+  
+  // Initialize and render the map
   useEffect(() => {
-    const initMap = async () => {
+    console.log("Map component mounted");
+    
+    // Check if element exists
+    if (!mapRef.current) {
+      console.error("Map container element not found");
+      return;
+    }
+    
+    // Set a timeout to wait for Google Maps to load
+    const timeoutId = setTimeout(() => {
+      if (!isGoogleMapsLoaded()) {
+        console.error("Google Maps failed to load within timeout");
+        setError("Failed to load Google Maps API");
+        setLoading(false);
+      }
+    }, 10000);
+    
+    // Try to initialize the map
+    const initializeMap = () => {
+      if (!isGoogleMapsLoaded()) {
+        console.log("Google Maps not yet loaded, waiting...");
+        setTimeout(initializeMap, 500);
+        return;
+      }
+      
+      console.log("Google Maps loaded, initializing map...");
+      clearTimeout(timeoutId);
+      
       try {
-        if (!mapRef.current) return;
-        
-        // Wait for Google Maps to load from the script tag in index.html
-        await waitForGoogleMapsToLoad();
-        
-        console.log("Initializing map...");
-        const defaultLocation = userLocation || { latitude: 64.1466, longitude: -21.9426 }; // Reykjavik, Iceland by default
-
-        // Check if Google Maps API is loaded
-        if (!window.google || !window.google.maps) {
-          throw new Error("Google Maps API not loaded");
-        }
-
-        const mapInstance = new window.google.maps.Map(mapRef.current, {
-          center: { lat: defaultLocation.latitude, lng: defaultLocation.longitude },
-          zoom: zoom,
-          disableDefaultUI: true,
-          styles: [
-            {
-              featureType: "poi",
-              elementType: "labels",
-              stylers: [{ visibility: "off" }]
-            }
-          ]
+        // Create a map centered on Reykjavik, Iceland
+        const center = { lat: 64.1466, lng: -21.9426 };
+        const map = new window.google.maps.Map(mapRef.current, {
+          center,
+          zoom: 14,
+          disableDefaultUI: true
         });
-
-        setMap(mapInstance);
+        
+        console.log("Map created successfully");
+        
+        // Add markers for each scooter
+        scooters.forEach(scooter => {
+          const marker = new window.google.maps.Marker({
+            position: { lat: scooter.latitude, lng: scooter.longitude },
+            map,
+            title: `Scooter #${scooter.scooterId}`,
+          });
+          
+          // Add click listener
+          marker.addListener('click', () => {
+            if (onScooterSelect) {
+              onScooterSelect(scooter);
+            }
+          });
+        });
+        
         setLoading(false);
       } catch (err) {
         console.error("Error initializing map:", err);
-        setError("Failed to initialize the map");
+        setError("Error initializing map");
         setLoading(false);
       }
     };
-
-    initMap();
-
-    // Clean up
+    
+    // Start the initialization process
+    initializeMap();
+    
+    // Cleanup
     return () => {
-      // Clear markers
-      if (markers) {
-        Object.values(markers).forEach(marker => {
-          marker.setMap(null);
-        });
-      }
-      if (userMarker) {
-        userMarker.setMap(null);
-      }
+      clearTimeout(timeoutId);
     };
-  }, []);
-
-  // Update markers when scooters change
-  useEffect(() => {
-    if (!map || !window.google) return;
-    
-    // Clear old markers
-    Object.values(markers).forEach(marker => {
-      marker.setMap(null);
-    });
-    
-    const newMarkers: { [key: number]: GoogleMapsMarker } = {};
-    
-    // Create new markers
-    scooters.forEach(scooter => {
-      const marker = new window.google.maps.Marker({
-        position: { lat: scooter.latitude, lng: scooter.longitude },
-        map: map,
-        icon: {
-          url: `data:image/svg+xml;utf8,
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-            <circle cx="16" cy="16" r="14" fill="white" stroke="rgba(0,0,0,0.1)" stroke-width="1"/>
-            <path d="M12 12L20 20M12 20L20 12" stroke="${scooter.isAvailable ? '#3B82F6' : '#9CA3AF'}" stroke-width="2"/>
-          </svg>`,
-          scaledSize: new window.google.maps.Size(32, 32),
-        },
-        title: `ScootMe #${scooter.scooterId} - Battery: ${scooter.batteryLevel}%`
-      });
-      
-      marker.addListener('click', () => {
-        if (onScooterSelect) {
-          onScooterSelect(scooter);
-        }
-      });
-      
-      newMarkers[scooter.id] = marker;
-    });
-    
-    setMarkers(newMarkers);
-  }, [map, scooters, onScooterSelect]);
-
-  // Update user location marker
-  useEffect(() => {
-    if (!map || !window.google || !userLocation) return;
-    
-    if (userMarker) {
-      userMarker.setPosition({ lat: userLocation.latitude, lng: userLocation.longitude });
-    } else {
-      // Create user marker
-      const marker = new window.google.maps.Marker({
-        position: { lat: userLocation.latitude, lng: userLocation.longitude },
-        map: map,
-        icon: {
-          url: `data:image/svg+xml;utf8,
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" fill="#3B82F6" fill-opacity="0.2"/>
-            <circle cx="12" cy="12" r="6" fill="#3B82F6"/>
-            <circle cx="12" cy="12" r="3" fill="white"/>
-          </svg>`,
-          scaledSize: new window.google.maps.Size(24, 24),
-        },
-        zIndex: 1000
-      });
-      
-      setUserMarker(marker);
-    }
-    
-    // Center map on user
-    map.setCenter({ lat: userLocation.latitude, lng: userLocation.longitude });
-  }, [map, userLocation]);
-
-  const handleZoomIn = () => {
-    if (map) {
-      const newZoom = Math.min(20, zoom + 1);
-      map.setZoom(newZoom);
-      setZoomLevel(newZoom);
-    }
-  };
-
-  const handleZoomOut = () => {
-    if (map) {
-      const newZoom = Math.max(10, zoom - 1);
-      map.setZoom(newZoom);
-      setZoomLevel(newZoom);
-    }
-  };
-
-  const handleCenterOnUser = () => {
-    if (map && userLocation) {
-      map.setCenter({ lat: userLocation.latitude, lng: userLocation.longitude });
-    }
-  };
-
+  }, [scooters, onScooterSelect]);
+  
   if (loading) {
     return (
-      <div className={`flex items-center justify-center bg-gray-100 ${className}`}>
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className={`flex items-center justify-center bg-gray-100 h-full ${className}`}>
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-2">Loading map...</p>
       </div>
     );
   }
-
+  
   if (error) {
     return (
-      <div className={`flex flex-col items-center justify-center bg-gray-100 p-4 ${className}`}>
-        <p className="text-red-500">{error}</p>
-        <p className="text-sm text-gray-500 mt-2">
+      <div className={`flex flex-col items-center justify-center bg-gray-100 h-full p-4 ${className}`}>
+        <p className="text-red-500 text-lg font-medium">{error}</p>
+        <p className="text-gray-600 mt-2">
           Please check your internet connection and try again.
         </p>
       </div>
     );
   }
-
+  
   return (
-    <div className={`relative ${className}`}>
-      <div ref={mapRef} className="w-full h-full" />
-      
-      {/* Map Controls */}
-      <div className="absolute right-4 bottom-32 flex flex-col space-y-2">
-        <button
-          onClick={handleZoomIn}
-          className="bg-white p-3 rounded-full shadow-lg transition-colors hover:bg-gray-100"
-          aria-label="Zoom in"
-        >
-          <Plus className="h-5 w-5 text-gray-700" />
-        </button>
-        <button
-          onClick={handleZoomOut}
-          className="bg-white p-3 rounded-full shadow-lg transition-colors hover:bg-gray-100"
-          aria-label="Zoom out"
-        >
-          <Minus className="h-5 w-5 text-gray-700" />
-        </button>
-        <button
-          onClick={handleCenterOnUser}
-          className="bg-white p-3 rounded-full shadow-lg transition-colors hover:bg-gray-100"
-          aria-label="Center on my location"
-        >
-          <Locate className="h-5 w-5 text-primary" />
-        </button>
-      </div>
+    <div className={`w-full h-full ${className}`} style={{ position: 'relative' }}>
+      <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 }
