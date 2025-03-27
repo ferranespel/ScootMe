@@ -200,13 +200,16 @@ export default function HomePage() {
   return (
     <MainLayout>
       <div className="relative h-full">
-        {/* Map View */}
-        <Map 
-          scooters={scooters || []}
-          userLocation={userLocation}
-          onScooterSelect={handleScooterSelect}
-          className="h-full w-full"
-        />
+        {/* Map View with key to force remount */}
+        <div className="h-full w-full" id="map-container">
+          <Map 
+            key="mainMap"
+            scooters={scooters || []}
+            userLocation={userLocation}
+            onScooterSelect={handleScooterSelect}
+            className="h-full w-full"
+          />
+        </div>
         
         {/* QR Code Scanner Button */}
         <Button 

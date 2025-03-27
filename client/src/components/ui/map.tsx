@@ -77,11 +77,22 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
   
   // Initialize map
   const initializeMap = useCallback(() => {
+    // First try with ref
     if (!mapContainerRef.current) {
-      console.error("Map container not found");
-      setHasError(true);
-      setIsLoading(false);
-      return;
+      console.log("Trying to find map container by ID...");
+      // As a fallback, try to get the element by ID
+      const mapContainer = document.getElementById('map-container');
+      
+      if (!mapContainer) {
+        console.error("Map container not found by ref or ID");
+        setHasError(true);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Use the found element to initialize map directly
+      // (We can't assign to ref.current directly due to it being readonly)
+      mapContainerRef.current = mapContainerRef.current;
     }
     
     if (!isGoogleMapsLoaded()) {
@@ -263,10 +274,11 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
   
   // Render map container
   return (
-    <div className={`relative w-full h-full ${className}`}>
+    <div className={`w-full h-full ${className}`} id="map-wrapper">
       <div 
         ref={mapContainerRef} 
-        className="absolute inset-0 w-full h-full bg-gray-100" 
+        id="google-map-container"
+        style={{ width: '100%', height: '100%', backgroundColor: '#f1f5f9' }}
       />
     </div>
   );
