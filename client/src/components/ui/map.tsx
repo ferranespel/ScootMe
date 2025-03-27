@@ -47,8 +47,8 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
 
     return new Promise<void>((resolve, reject) => {
       try {
-        // Get API key
-        const apiKey = "AIzaSyBCZRjiJ5OcOqlAfySG56ExYIcJ-9DLo4E";
+        // Get API key from environment
+        const apiKey = import.meta.env.GOOGLE_MAPS_API_KEY;
         
         // Create callback function that will be called when the script loads
         window.initMap = () => {
@@ -75,26 +75,26 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
     });
   }, []);
   
-  // Initialize map
-  const initializeMap = useCallback(() => {
-    // First try with ref
-    if (!mapContainerRef.current) {
-      console.log("Trying to find map container by ID...");
-      // As a fallback, try to get the element by ID
-      const mapContainer = document.getElementById('map-container');
-      
-      if (!mapContainer) {
-        console.error("Map container not found by ref or ID");
-        setHasError(true);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Use the found element to initialize map directly
-      // (We can't assign to ref.current directly due to it being readonly)
-      mapContainerRef.current = mapContainerRef.current;
-    }
+  // Add a marker to the map
+  const addMarker = useCallback((map: any, scooter: Scooter) => {
+    const marker = new window.google.maps.Marker({
+      position: { lat: scooter.latitude, lng: scooter.longitude },
+      map,
+      title: `Scooter #${scooter.scooterId} - Battery: ${scooter.batteryLevel}%`,
+    });
     
+    marker.addListener('click', () => {
+      if (onScooterSelect) {
+        onScooterSelect(scooter);
+      }
+    });
+    
+    // Store marker reference
+    markersRef.current.push(marker);
+  }, [onScooterSelect]);
+  
+  // Initialize map with specific element
+  const createMapInstance = useCallback((element: HTMLElement) => {
     if (!isGoogleMapsLoaded()) {
       console.error("Google Maps not loaded yet");
       setHasError(true);
@@ -105,8 +105,8 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
     try {
       console.log("Creating new Google Map instance");
       
-      // Default location (Reykjavik)
-      const defaultCenter = { lat: 64.1466, lng: -21.9426 };
+      // Default location (United States - centered on continental US)
+      const defaultCenter = { lat: 39.8283, lng: -98.5795 };
       
       // Use user location if available
       const center = userLocation ? 
@@ -116,7 +116,7 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
       // Create new map
       const mapOptions = {
         center,
-        zoom: 14,
+        zoom: 4, // Lower zoom level to show more of the US
         disableDefaultUI: true,
         zoomControl: true,
         mapTypeControl: false,
@@ -126,7 +126,7 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
       };
       
       // Create the map
-      const map = new window.google.maps.Map(mapContainerRef.current, mapOptions);
+      const map = new window.google.maps.Map(element, mapOptions);
       googleMapRef.current = map;
       
       // Add scooter markers
@@ -164,25 +164,27 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
       setHasError(true);
       setIsLoading(false);
     }
-  }, [scooters, userLocation]);
+  }, [addMarker, scooters, userLocation]);
   
-  // Add a marker to the map
-  const addMarker = (map: any, scooter: Scooter) => {
-    const marker = new window.google.maps.Marker({
-      position: { lat: scooter.latitude, lng: scooter.longitude },
-      map,
-      title: `Scooter #${scooter.scooterId} - Battery: ${scooter.batteryLevel}%`,
-    });
-    
-    marker.addListener('click', () => {
-      if (onScooterSelect) {
-        onScooterSelect(scooter);
+  // Initialize map
+  const initializeMap = useCallback(() => {
+    // First try to use the ref
+    if (mapContainerRef.current) {
+      createMapInstance(mapContainerRef.current);
+    } else {
+      // As a fallback, try to find the element by ID
+      console.log("Map container ref not available, trying getElementById");
+      const mapContainer = document.getElementById('google-map-container');
+      
+      if (mapContainer) {
+        createMapInstance(mapContainer);
+      } else {
+        console.error("Map container not found by ref or ID");
+        setHasError(true);
+        setIsLoading(false);
       }
-    });
-    
-    // Store marker reference
-    markersRef.current.push(marker);
-  };
+    }
+  }, [createMapInstance]);
   
   // Main effect: Load Google Maps and initialize the map
   useEffect(() => {
@@ -245,7 +247,7 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
         });
       }
     }
-  }, [scooters, userLocation, mapLoaded]);
+  }, [scooters, userLocation, mapLoaded, addMarker]);
   
   // Loading state
   if (isLoading) {
