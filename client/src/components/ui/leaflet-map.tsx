@@ -41,12 +41,30 @@ interface MapProps {
 function MapUpdater({ userLocation }: { userLocation?: { latitude: number; longitude: number } }) {
   const map = useMap();
   
+  // This effect runs after the MapContainer is rendered and whenever userLocation changes
   React.useEffect(() => {
-    if (userLocation) {
-      map.setView([userLocation.latitude, userLocation.longitude], 14);
-    } else {
-      // Center on Reykjavik, Iceland if no user location
+    try {
+      // FORCING the map to always center on Reykjavik, Iceland first
       map.setView([64.1466, -21.9426], 12);
+      
+      // Then if we have user location, animate to that location
+      if (userLocation) {
+        setTimeout(() => {
+          try {
+            map.flyTo([userLocation.latitude, userLocation.longitude], 14, {
+              animate: true,
+              duration: 1.5
+            });
+          } catch (error) {
+            console.error('Error in flyTo:', error);
+          }
+        }, 1000);
+      }
+      
+      // Log to help with debugging
+      console.log('MapUpdater: Centering map on Reykjavik, Iceland');
+    } catch (error) {
+      console.error('Error in MapUpdater:', error);
     }
   }, [map, userLocation]);
   
@@ -106,6 +124,12 @@ export function LeafletMap({ scooters, userLocation, onScooterSelect, className 
     iconAnchor: [12, 12],
   });
   
+  // Log coordinates to help debug
+  React.useEffect(() => {
+    console.log('Map mounting with Reykjavik coordinates:', [64.1466, -21.9426]);
+    console.log('Current user location:', userLocation);
+  }, [userLocation]);
+  
   // Effect to set loading state
   React.useEffect(() => {
     setIsLoading(false);
@@ -136,11 +160,14 @@ export function LeafletMap({ scooters, userLocation, onScooterSelect, className 
     );
   }
   
-  // Initial map center (Reykjavik, Iceland)
+  // IMPORTANT: Force the map to show Reykjavik, Iceland
+  // This overrides any other center settings
+  const reykjavikCenter: [number, number] = [64.1466, -21.9426];
   const initialCenter: [number, number] = userLocation 
     ? [userLocation.latitude, userLocation.longitude] 
-    : [64.1466, -21.9426]; // Center of Reykjavik
+    : reykjavikCenter;
   
+  // Use a more zoomed-in view for Reykjavik
   const initialZoom = userLocation ? 14 : 12;
   
   // Render map

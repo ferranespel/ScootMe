@@ -47,43 +47,44 @@ export default function HomePage() {
     refetchInterval: activeRideData ? 5000 : false, // Poll every 5 seconds when in a ride
   });
   
-  // Get user location
+  // Always start with Reykjavik as the location
   useEffect(() => {
+    // ALWAYS set to Reykjavik first
+    setUserLocation({
+      latitude: 64.1466,
+      longitude: -21.9426
+    });
+    
+    // Then try to get user location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
+          console.log("Got user position:", position.coords);
+          // Only set user location after map has loaded with Reykjavik first
+          setTimeout(() => {
+            setUserLocation({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude
+            });
+          }, 2000);
         },
         (error) => {
           console.error("Error getting location:", error);
           toast({
             title: "Location Error",
-            description: "Could not access your location. Using default location.",
+            description: "Could not access your location. Using default location (Reykjavik).",
             variant: "destructive",
           });
-          
-          // Use default location (Reykjavik, Iceland)
-          setUserLocation({
-            latitude: 64.1466,
-            longitude: -21.9426
-          });
+          // Already using Reykjavik from above
         }
       );
     } else {
       toast({
         title: "Location Not Supported",
-        description: "Geolocation is not supported by this browser.",
+        description: "Geolocation is not supported by this browser. Using Reykjavik, Iceland.",
         variant: "destructive",
       });
-      
-      // Use default location (Reykjavik, Iceland)
-      setUserLocation({
-        latitude: 64.1466,
-        longitude: -21.9426
-      });
+      // Already using Reykjavik from above
     }
   }, []);
   
@@ -219,7 +220,7 @@ export default function HomePage() {
         </Button>
         
         {/* Bottom Sheet */}
-        <BottomSheet isOpen={true}>
+        <BottomSheet isOpen={true} initialState="expanded" onStateChange={(expanded) => console.log('Bottom sheet state changed:', expanded)}>
           <Tabs defaultValue="available">
             <TabsList className="w-full mb-4 grid grid-cols-4">
               <TabsTrigger value="available" className="text-sm">Available</TabsTrigger>
@@ -236,7 +237,7 @@ export default function HomePage() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : nearbyScooters.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pb-4">
                   {nearbyScooters.map(scooter => (
                     <ScooterCard 
                       key={scooter.id}

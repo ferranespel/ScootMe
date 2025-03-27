@@ -68,7 +68,7 @@ export class MemStorage implements IStorage {
 
   private initializeScooters(): void {
     const mockScooters: InsertScooter[] = [
-      // Scooters placed around downtown Reykjavik, Iceland
+      // Scooters placed around downtown Reykjavik, Iceland - Using proper coordinates
       { scooterId: 'A245', batteryLevel: 85, isAvailable: true, latitude: 64.1466, longitude: -21.9426 }, // Central Reykjavik
       { scooterId: 'B182', batteryLevel: 54, isAvailable: true, latitude: 64.1482, longitude: -21.9376 }, // Near Hallgrímskirkja
       { scooterId: 'C923', batteryLevel: 92, isAvailable: true, latitude: 64.1429, longitude: -21.9268 }, // Near Laugavegur
@@ -76,6 +76,9 @@ export class MemStorage implements IStorage {
       { scooterId: 'E891', batteryLevel: 65, isAvailable: true, latitude: 64.1407, longitude: -21.9443 }, // Near University of Iceland
       { scooterId: 'F722', batteryLevel: 91, isAvailable: true, latitude: 64.1384, longitude: -21.9532 }, // Near National Museum
       { scooterId: 'G456', batteryLevel: 72, isAvailable: true, latitude: 64.1390, longitude: -21.9246 }, // Near Tjörnin lake
+      { scooterId: 'H789', batteryLevel: 88, isAvailable: true, latitude: 64.1435, longitude: -21.9310 }, // Near Reykjavik City Hall
+      { scooterId: 'I234', batteryLevel: 45, isAvailable: true, latitude: 64.1451, longitude: -21.9355 }, // Near Austurvöllur square
+      { scooterId: 'J567', batteryLevel: 67, isAvailable: true, latitude: 64.1478, longitude: -21.9400 }, // Near Skólavörðustígur
     ];
 
     for (const scooter of mockScooters) {
