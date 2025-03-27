@@ -50,7 +50,7 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
           return;
         }
 
-        const defaultLocation = userLocation || { latitude: 37.7749, longitude: -122.4194 }; // San Francisco by default
+        const defaultLocation = userLocation || { latitude: 64.1466, longitude: -21.9426 }; // Reykjavik, Iceland by default
 
         const mapInstance = new window.google.maps.Map(mapRef.current, {
           center: { lat: defaultLocation.latitude, lng: defaultLocation.longitude },

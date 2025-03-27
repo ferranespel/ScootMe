@@ -65,10 +65,10 @@ export default function HomePage() {
             variant: "destructive",
           });
           
-          // Use default location
+          // Use default location (Reykjavik, Iceland)
           setUserLocation({
-            latitude: 37.7749,
-            longitude: -122.4194
+            latitude: 64.1466,
+            longitude: -21.9426
           });
         }
       );
@@ -79,10 +79,10 @@ export default function HomePage() {
         variant: "destructive",
       });
       
-      // Use default location
+      // Use default location (Reykjavik, Iceland)
       setUserLocation({
-        latitude: 37.7749,
-        longitude: -122.4194
+        latitude: 64.1466,
+        longitude: -21.9426
       });
     }
   }, []);

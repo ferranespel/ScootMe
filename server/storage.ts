@@ -68,11 +68,14 @@ export class MemStorage implements IStorage {
 
   private initializeScooters(): void {
     const mockScooters: InsertScooter[] = [
-      { scooterId: 'A245', batteryLevel: 85, isAvailable: true, latitude: 37.7749, longitude: -122.4194 },
-      { scooterId: 'B182', batteryLevel: 54, isAvailable: true, latitude: 37.7759, longitude: -122.4154 },
-      { scooterId: 'C923', batteryLevel: 92, isAvailable: true, latitude: 37.7739, longitude: -122.4244 },
-      { scooterId: 'D567', batteryLevel: 78, isAvailable: true, latitude: 37.7719, longitude: -122.4124 },
-      { scooterId: 'E891', batteryLevel: 65, isAvailable: true, latitude: 37.7789, longitude: -122.4174 },
+      // Scooters placed around downtown Reykjavik, Iceland
+      { scooterId: 'A245', batteryLevel: 85, isAvailable: true, latitude: 64.1466, longitude: -21.9426 }, // Central Reykjavik
+      { scooterId: 'B182', batteryLevel: 54, isAvailable: true, latitude: 64.1482, longitude: -21.9376 }, // Near Hallgrímskirkja
+      { scooterId: 'C923', batteryLevel: 92, isAvailable: true, latitude: 64.1429, longitude: -21.9268 }, // Near Laugavegur
+      { scooterId: 'D567', batteryLevel: 78, isAvailable: true, latitude: 64.1499, longitude: -21.9507 }, // Near Harpa Concert Hall
+      { scooterId: 'E891', batteryLevel: 65, isAvailable: true, latitude: 64.1407, longitude: -21.9443 }, // Near University of Iceland
+      { scooterId: 'F722', batteryLevel: 91, isAvailable: true, latitude: 64.1384, longitude: -21.9532 }, // Near National Museum
+      { scooterId: 'G456', batteryLevel: 72, isAvailable: true, latitude: 64.1390, longitude: -21.9246 }, // Near Tjörnin lake
     ];
 
     for (const scooter of mockScooters) {
