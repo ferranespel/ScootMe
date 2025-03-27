@@ -73,8 +73,9 @@ export class MemStorage implements IStorage {
       longitude: -21.9426
     };
     
-    // Define areas within Reykjavik for more realistic distribution
+    // Define areas across Greater Reykjavik for more realistic distribution
     const areas = [
+      // Central Reykjavik
       { name: "Downtown", center: { latitude: 64.1466, longitude: -21.9426 }, radius: 0.005 },
       { name: "Hallgrímskirkja", center: { latitude: 64.1482, longitude: -21.9376 }, radius: 0.004 },
       { name: "Laugavegur", center: { latitude: 64.1429, longitude: -21.9268 }, radius: 0.006 },
@@ -84,12 +85,32 @@ export class MemStorage implements IStorage {
       { name: "Tjörnin", center: { latitude: 64.1390, longitude: -21.9246 }, radius: 0.004 },
       { name: "City Hall", center: { latitude: 64.1435, longitude: -21.9310 }, radius: 0.003 },
       { name: "Austurvöllur", center: { latitude: 64.1451, longitude: -21.9355 }, radius: 0.002 },
-      { name: "Skólavörðustígur", center: { latitude: 64.1478, longitude: -21.9400 }, radius: 0.003 },
       { name: "Vesturbær", center: { latitude: 64.1383, longitude: -21.9607 }, radius: 0.007 },
       { name: "BSÍ", center: { latitude: 64.1399, longitude: -21.9326 }, radius: 0.003 },
       { name: "Hlemmur", center: { latitude: 64.1431, longitude: -21.9151 }, radius: 0.005 },
-      { name: "Old Harbor", center: { latitude: 64.1523, longitude: -21.9419 }, radius: 0.004 },
-      { name: "Grandi", center: { latitude: 64.1563, longitude: -21.9531 }, radius: 0.004 }
+      
+      // Expanded areas
+      { name: "Kópavogur", center: { latitude: 64.1031, longitude: -21.9026 }, radius: 0.015 },
+      { name: "Kópavogur Mall", center: { latitude: 64.1012, longitude: -21.8897 }, radius: 0.008 },
+      { name: "Smáralind", center: { latitude: 64.1006, longitude: -21.8886 }, radius: 0.005 },
+      
+      { name: "Árbær", center: { latitude: 64.1156, longitude: -21.8003 }, radius: 0.012 },
+      { name: "Árbæjarsafn", center: { latitude: 64.1172, longitude: -21.7825 }, radius: 0.005 },
+      
+      { name: "Grafarvogur", center: { latitude: 64.1361, longitude: -21.7785 }, radius: 0.015 },
+      { name: "Grafarholt", center: { latitude: 64.1242, longitude: -21.7554 }, radius: 0.012 },
+      { name: "Spöngin", center: { latitude: 64.1406, longitude: -21.7935 }, radius: 0.006 },
+      
+      { name: "Laugadalur", center: { latitude: 64.1399, longitude: -21.8733 }, radius: 0.012 },
+      { name: "Laugardalur Park", center: { latitude: 64.1384, longitude: -21.8857 }, radius: 0.008 },
+      
+      { name: "Seltjarnarnes", center: { latitude: 64.1557, longitude: -22.0016 }, radius: 0.010 },
+      { name: "Garðabær", center: { latitude: 64.0891, longitude: -21.9235 }, radius: 0.012 },
+      { name: "Hafnarfjörður", center: { latitude: 64.0671, longitude: -21.9573 }, radius: 0.015 },
+      
+      { name: "Mosfellsbær", center: { latitude: 64.1670, longitude: -21.7020 }, radius: 0.012 },
+      { name: "Breiðholt", center: { latitude: 64.1038, longitude: -21.8330 }, radius: 0.014 },
+      { name: "Kringlan Mall", center: { latitude: 64.1295, longitude: -21.8877 }, radius: 0.005 }
     ];
     
     // Generate 250 scooters
