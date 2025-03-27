@@ -37,36 +37,32 @@ interface MapProps {
   className?: string;
 }
 
-// Function to load Google Maps API
-const loadGoogleMapsApi = () => {
+// Function to wait for Google Maps API to load
+const waitForGoogleMapsToLoad = () => {
   return new Promise<void>((resolve, reject) => {
+    // Check if Google Maps is already loaded
     if (window.google && window.google.maps) {
+      console.log("Google Maps already loaded");
       resolve();
       return;
     }
 
-    // Get API key from environment
-    // We know it's already available since we asked for it, but we add this check for type safety
-    const apiKey = window.GOOGLE_MAPS_API_KEY || import.meta.env.GOOGLE_MAPS_API_KEY;
+    console.log("Waiting for Google Maps to load...");
     
-    if (!apiKey) {
-      console.error("Google Maps API key is missing");
-      reject(new Error("Google Maps API key is missing"));
-      return;
-    }
-
-    window.initMap = () => {
-      resolve();
-    };
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap`;
-    script.async = true;
-    script.defer = true;
-    script.onerror = () => {
-      reject(new Error("Failed to load Google Maps API"));
-    };
-    document.head.appendChild(script);
+    // Set up a timeout to avoid infinite wait
+    const timeout = setTimeout(() => {
+      reject(new Error("Google Maps API loading timeout"));
+    }, 10000); // 10 seconds timeout
+    
+    // Check every 100ms if Google Maps is loaded
+    const checkGoogleMaps = setInterval(() => {
+      if (window.google && window.google.maps) {
+        clearTimeout(timeout);
+        clearInterval(checkGoogleMaps);
+        console.log("Google Maps loaded successfully");
+        resolve();
+      }
+    }, 100);
   });
 };
 
@@ -85,10 +81,16 @@ export function Map({ scooters, userLocation, onScooterSelect, className = '' }:
       try {
         if (!mapRef.current) return;
         
-        // Load Google Maps API
-        await loadGoogleMapsApi();
-
+        // Wait for Google Maps to load from the script tag in index.html
+        await waitForGoogleMapsToLoad();
+        
+        console.log("Initializing map...");
         const defaultLocation = userLocation || { latitude: 64.1466, longitude: -21.9426 }; // Reykjavik, Iceland by default
+
+        // Check if Google Maps API is loaded
+        if (!window.google || !window.google.maps) {
+          throw new Error("Google Maps API not loaded");
+        }
 
         const mapInstance = new window.google.maps.Map(mapRef.current, {
           center: { lat: defaultLocation.latitude, lng: defaultLocation.longitude },
