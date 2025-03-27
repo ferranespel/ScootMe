@@ -34,7 +34,7 @@ export interface IStorage {
   createPayment(payment: InsertPayment): Promise<Payment>;
 
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using any type to avoid TypeScript error with express-session
 }
 
 export class MemStorage implements IStorage {
@@ -46,7 +46,7 @@ export class MemStorage implements IStorage {
   private scooterIdCounter: number;
   private rideIdCounter: number;
   private paymentIdCounter: number;
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using any type to avoid TypeScript error
 
   constructor() {
     this.users = new Map();
@@ -67,21 +67,64 @@ export class MemStorage implements IStorage {
   }
 
   private initializeScooters(): void {
-    const mockScooters: InsertScooter[] = [
-      // Scooters placed around downtown Reykjavik, Iceland - Using proper coordinates
-      { scooterId: 'A245', batteryLevel: 85, isAvailable: true, latitude: 64.1466, longitude: -21.9426 }, // Central Reykjavik
-      { scooterId: 'B182', batteryLevel: 54, isAvailable: true, latitude: 64.1482, longitude: -21.9376 }, // Near Hallgrímskirkja
-      { scooterId: 'C923', batteryLevel: 92, isAvailable: true, latitude: 64.1429, longitude: -21.9268 }, // Near Laugavegur
-      { scooterId: 'D567', batteryLevel: 78, isAvailable: true, latitude: 64.1499, longitude: -21.9507 }, // Near Harpa Concert Hall
-      { scooterId: 'E891', batteryLevel: 65, isAvailable: true, latitude: 64.1407, longitude: -21.9443 }, // Near University of Iceland
-      { scooterId: 'F722', batteryLevel: 91, isAvailable: true, latitude: 64.1384, longitude: -21.9532 }, // Near National Museum
-      { scooterId: 'G456', batteryLevel: 72, isAvailable: true, latitude: 64.1390, longitude: -21.9246 }, // Near Tjörnin lake
-      { scooterId: 'H789', batteryLevel: 88, isAvailable: true, latitude: 64.1435, longitude: -21.9310 }, // Near Reykjavik City Hall
-      { scooterId: 'I234', batteryLevel: 45, isAvailable: true, latitude: 64.1451, longitude: -21.9355 }, // Near Austurvöllur square
-      { scooterId: 'J567', batteryLevel: 67, isAvailable: true, latitude: 64.1478, longitude: -21.9400 }, // Near Skólavörðustígur
+    // Define Reykjavik center coordinates
+    const reykjavikCenter = {
+      latitude: 64.1466,
+      longitude: -21.9426
+    };
+    
+    // Define areas within Reykjavik for more realistic distribution
+    const areas = [
+      { name: "Downtown", center: { latitude: 64.1466, longitude: -21.9426 }, radius: 0.005 },
+      { name: "Hallgrímskirkja", center: { latitude: 64.1482, longitude: -21.9376 }, radius: 0.004 },
+      { name: "Laugavegur", center: { latitude: 64.1429, longitude: -21.9268 }, radius: 0.006 },
+      { name: "Harpa", center: { latitude: 64.1499, longitude: -21.9507 }, radius: 0.003 },
+      { name: "University", center: { latitude: 64.1407, longitude: -21.9443 }, radius: 0.004 },
+      { name: "National Museum", center: { latitude: 64.1384, longitude: -21.9532 }, radius: 0.003 },
+      { name: "Tjörnin", center: { latitude: 64.1390, longitude: -21.9246 }, radius: 0.004 },
+      { name: "City Hall", center: { latitude: 64.1435, longitude: -21.9310 }, radius: 0.003 },
+      { name: "Austurvöllur", center: { latitude: 64.1451, longitude: -21.9355 }, radius: 0.002 },
+      { name: "Skólavörðustígur", center: { latitude: 64.1478, longitude: -21.9400 }, radius: 0.003 },
+      { name: "Vesturbær", center: { latitude: 64.1383, longitude: -21.9607 }, radius: 0.007 },
+      { name: "BSÍ", center: { latitude: 64.1399, longitude: -21.9326 }, radius: 0.003 },
+      { name: "Hlemmur", center: { latitude: 64.1431, longitude: -21.9151 }, radius: 0.005 },
+      { name: "Old Harbor", center: { latitude: 64.1523, longitude: -21.9419 }, radius: 0.004 },
+      { name: "Grandi", center: { latitude: 64.1563, longitude: -21.9531 }, radius: 0.004 }
     ];
-
-    for (const scooter of mockScooters) {
+    
+    // Generate 250 scooters
+    const scooters: InsertScooter[] = [];
+    
+    for (let i = 1; i <= 250; i++) {
+      // Choose a random area
+      const area = areas[Math.floor(Math.random() * areas.length)];
+      
+      // Generate a random position within the area radius
+      const angle = Math.random() * 2 * Math.PI;
+      const distance = Math.random() * area.radius;
+      const latitude = area.center.latitude + (distance * Math.cos(angle));
+      const longitude = area.center.longitude + (distance * Math.sin(angle));
+      
+      // Generate a random battery level (20-100%)
+      const batteryLevel = Math.floor(Math.random() * 81) + 20;
+      
+      // Generate scooter ID (letter + 3 digits)
+      const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26)); // A-Z
+      const number = String(Math.floor(Math.random() * 1000)).padStart(3, '0'); // 000-999
+      const scooterId = `${letter}${number}`;
+      
+      // Create scooter
+      scooters.push({
+        scooterId,
+        batteryLevel,
+        isAvailable: true,
+        latitude,
+        longitude
+      });
+    }
+    
+    // Add all scooters to the storage
+    for (const scooter of scooters) {
       this.createScooter(scooter);
     }
   }
@@ -99,7 +142,11 @@ export class MemStorage implements IStorage {
 
   async createUser(user: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
-    const newUser: User = { ...user, id };
+    const newUser: User = { 
+      ...user, 
+      id,
+      balance: user.balance || 0 // Ensure balance is never undefined
+    };
     this.users.set(id, newUser);
     return newUser;
   }
@@ -134,7 +181,11 @@ export class MemStorage implements IStorage {
 
   async createScooter(scooter: InsertScooter): Promise<Scooter> {
     const id = this.scooterIdCounter++;
-    const newScooter: Scooter = { ...scooter, id };
+    const newScooter: Scooter = { 
+      ...scooter, 
+      id,
+      isAvailable: scooter.isAvailable !== undefined ? scooter.isAvailable : true // Ensure isAvailable is never undefined
+    };
     this.scooters.set(id, newScooter);
     return newScooter;
   }
