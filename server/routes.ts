@@ -1,10 +1,15 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { insertScooterSchema, insertRideSchema, updateRideSchema, insertPaymentSchema } from "@shared/schema";
+import { 
+  insertScooterSchema, insertRideSchema, updateRideSchema, 
+  insertPaymentSchema, updateUserSchema, changePasswordSchema 
+} from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { scrypt, timingSafeEqual, randomBytes } from "crypto";
+import { promisify } from "util";
 
 // Helper to check if user is authenticated
 function isAuthenticated(req: any, res: any, next: any) {
@@ -246,6 +251,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User profile routes
+  app.get("/api/profile", isAuthenticated, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get profile" });
+    }
+  });
+  
+  app.patch("/api/profile", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = updateUserSchema.parse(req.body);
+      const updatedUser = await storage.updateUser(req.user.id, validatedData);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+  
+  // Profile image can be uploaded separately (would use multipart/form-data in a real app)
+  app.post("/api/profile/picture", isAuthenticated, async (req, res) => {
+    try {
+      const { profilePictureUrl } = req.body;
+      
+      if (!profilePictureUrl) {
+        return res.status(400).json({ message: "Profile picture URL is required" });
+      }
+      
+      const updatedUser = await storage.updateUser(req.user.id, { 
+        profilePicture: profilePictureUrl 
+      });
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update profile picture" });
+    }
+  });
+  
+  // Change password
+  const scryptAsync = promisify(scrypt);
+  
+  app.post("/api/profile/change-password", isAuthenticated, async (req, res) => {
+    try {
+      const { currentPassword, newPassword, confirmPassword } = 
+        changePasswordSchema.parse(req.body);
+      
+      // Get user with current password
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Verify current password (similar to auth.ts implementation)
+      const [hashed, salt] = user.password.split(".");
+      const hashedBuf = Buffer.from(hashed, "hex");
+      const suppliedBuf = (await scryptAsync(currentPassword, salt, 64)) as Buffer;
+      const passwordsMatch = timingSafeEqual(hashedBuf, suppliedBuf);
+      
+      if (!passwordsMatch) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+      
+      // Hash the new password
+      const newSalt = randomBytes(16).toString("hex");
+      const newHashedBuf = (await scryptAsync(newPassword, newSalt, 64)) as Buffer;
+      const newHashedPassword = `${newHashedBuf.toString("hex")}.${newSalt}`;
+      
+      // Update the password
+      const updatedUser = await storage.updateUserPassword(req.user.id, newHashedPassword);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+  
   // Payment routes
   app.get("/api/payments", isAuthenticated, async (req, res) => {
     try {

@@ -8,7 +8,10 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   email: text("email").notNull(),
   fullName: text("full_name").notNull(),
+  phoneNumber: text("phone_number"),
+  profilePicture: text("profile_picture"),
   balance: doublePrecision("balance").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const scooters = pgTable("scooters", {
@@ -50,6 +53,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
   email: true,
   fullName: true,
+  phoneNumber: true,
+  profilePicture: true,
   balance: true,
 });
 
@@ -113,4 +118,24 @@ export const registerSchema = insertUserSchema.extend({
   password: z.string().min(6, "Password must be at least 6 characters"),
   email: z.string().email("Please enter a valid email address"),
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  phoneNumber: z.string().optional(),
+  profilePicture: z.string().optional(),
+});
+
+// User profile update schema (doesn't include password)
+export const updateUserSchema = z.object({
+  email: z.string().email("Please enter a valid email address").optional(),
+  fullName: z.string().min(2, "Full name must be at least 2 characters").optional(),
+  phoneNumber: z.string().optional(),
+  profilePicture: z.string().optional(),
+});
+
+// Password change schema
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password confirmation is required"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });

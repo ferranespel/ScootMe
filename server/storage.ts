@@ -10,7 +10,9 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(userId: number, updates: Partial<User>): Promise<User | undefined>;
   updateUserBalance(userId: number, amount: number): Promise<User | undefined>;
+  updateUserPassword(userId: number, newPassword: string): Promise<User | undefined>;
   
   // Scooter methods
   getScooters(): Promise<Scooter[]>;
@@ -215,10 +217,28 @@ export class MemStorage implements IStorage {
     const newUser: User = { 
       ...user, 
       id,
-      balance: user.balance || 0 // Ensure balance is never undefined
+      phoneNumber: user.phoneNumber || null,
+      profilePicture: user.profilePicture || null,
+      balance: user.balance || 0, // Ensure balance is never undefined
+      createdAt: new Date() // Add the createdAt timestamp
     };
     this.users.set(id, newUser);
     return newUser;
+  }
+  
+  async updateUser(userId: number, updates: Partial<User>): Promise<User | undefined> {
+    const user = await this.getUser(userId);
+    if (!user) return undefined;
+    
+    // Don't allow updating certain fields like id and password through this method
+    const { id, password, balance, ...allowedUpdates } = updates as any;
+    
+    const updatedUser = { 
+      ...user, 
+      ...allowedUpdates 
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
   }
 
   async updateUserBalance(userId: number, amount: number): Promise<User | undefined> {
@@ -230,6 +250,18 @@ export class MemStorage implements IStorage {
       balance: user.balance + amount 
     };
     
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+  
+  async updateUserPassword(userId: number, newPassword: string): Promise<User | undefined> {
+    const user = await this.getUser(userId);
+    if (!user) return undefined;
+    
+    const updatedUser = { 
+      ...user, 
+      password: newPassword
+    };
     this.users.set(userId, updatedUser);
     return updatedUser;
   }

@@ -46,6 +46,7 @@ export default function AuthPage() {
       password: "",
       email: "",
       fullName: "",
+      phoneNumber: "",
       balance: 25,
     },
   });
@@ -240,6 +241,21 @@ export default function AuthPage() {
                     {registerForm.formState.errors.password && (
                       <p className="text-red-500 text-sm">
                         {registerForm.formState.errors.password.message}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="register-phone">Phone Number (Optional)</Label>
+                    <Input
+                      id="register-phone"
+                      type="tel"
+                      placeholder="+354 123 4567"
+                      {...registerForm.register("phoneNumber")}
+                    />
+                    {registerForm.formState.errors.phoneNumber && (
+                      <p className="text-red-500 text-sm">
+                        {registerForm.formState.errors.phoneNumber.message}
                       </p>
                     )}
                   </div>
