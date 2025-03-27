@@ -41,28 +41,15 @@ interface MapProps {
 function MapUpdater({ userLocation }: { userLocation?: { latitude: number; longitude: number } }) {
   const map = useMap();
   
-  // This effect runs after the MapContainer is rendered and whenever userLocation changes
+  // Only focus on setting the map view correctly - nothing else  
   React.useEffect(() => {
     try {
-      // FORCING the map to always center on Reykjavik, Iceland first
-      map.setView([64.1466, -21.9426], 12);
-      
-      // Then if we have user location, animate to that location
+      // Simple direct centering - don't try to fly to location
       if (userLocation) {
-        setTimeout(() => {
-          try {
-            map.flyTo([userLocation.latitude, userLocation.longitude], 14, {
-              animate: true,
-              duration: 1.5
-            });
-          } catch (error) {
-            console.error('Error in flyTo:', error);
-          }
-        }, 1000);
+        map.setView([userLocation.latitude, userLocation.longitude], 14);
+      } else {
+        map.setView([64.1466, -21.9426], 12); // Reykjavik, Iceland
       }
-      
-      // Log to help with debugging
-      console.log('MapUpdater: Centering map on Reykjavik, Iceland');
     } catch (error) {
       console.error('Error in MapUpdater:', error);
     }

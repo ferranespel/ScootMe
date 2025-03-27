@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ScooterCard } from '@/components/scooter-card';
 import { LeafletMap } from '@/components/ui/leaflet-map';
@@ -47,45 +47,15 @@ export default function HomePage() {
     refetchInterval: activeRideData ? 5000 : false, // Poll every 5 seconds when in a ride
   });
   
-  // Always start with Reykjavik as the location
+  // Set location effect
   useEffect(() => {
-    // ALWAYS set to Reykjavik first
-    setUserLocation({
+    // Initialize with Reykjavik
+    const reykjavikLocation = {
       latitude: 64.1466,
       longitude: -21.9426
-    });
+    };
     
-    // Then try to get user location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          console.log("Got user position:", position.coords);
-          // Only set user location after map has loaded with Reykjavik first
-          setTimeout(() => {
-            setUserLocation({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude
-            });
-          }, 2000);
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          toast({
-            title: "Location Error",
-            description: "Could not access your location. Using default location (Reykjavik).",
-            variant: "destructive",
-          });
-          // Already using Reykjavik from above
-        }
-      );
-    } else {
-      toast({
-        title: "Location Not Supported",
-        description: "Geolocation is not supported by this browser. Using Reykjavik, Iceland.",
-        variant: "destructive",
-      });
-      // Already using Reykjavik from above
-    }
+    setUserLocation(reykjavikLocation);
   }, []);
   
   // Check for active ride on load
