@@ -31,6 +31,43 @@ function isAuthenticated(req: any, res: any, next: any) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
+  
+  // TESTING ONLY: Endpoint to get verification code for a specific email or phone
+  // WARNING: This should ONLY be used for testing and removed in production
+  // This endpoint is always available since we're in development
+  app.get("/api/testing/verification-code", async (req, res) => {
+    try {
+      const { contact } = req.query;
+      console.log('Testing endpoint called with contact:', contact);
+      
+      if (!contact) {
+        return res.status(400).json({ message: "Contact (email or phone) is required" });
+      }
+      
+      // Import the verification module directly
+      const { getStoredVerificationCode } = await import('./verification');
+      
+      // Log verification codes for debugging
+      const verification = await import('./verification');
+      console.log('Verification module imported');
+      
+      // Get the code for this contact
+      const code = getStoredVerificationCode(contact as string);
+      console.log(`Code for ${contact}:`, code);
+      
+      if (!code) {
+        return res.status(404).json({ 
+          message: "No verification code found for this contact", 
+          contact 
+        });
+      }
+      
+      res.json({ contact, code });
+    } catch (error) {
+      console.error('Error in verification code testing endpoint:', error);
+      res.status(500).json({ message: "Failed to get verification code" });
+    }
+  });
 
   // Scooter routes
   app.get("/api/scooters", async (req, res) => {
@@ -546,6 +583,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to get verification status" });
+    }
+  });
+
+  // TEST ONLY: Endpoint to get verification codes for a user
+  app.get("/api/verification/test/codes", isAuthenticated, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Import the verification module to access codes
+      const { verificationCodes } = await import('./verification');
+      
+      // Get the verification codes
+      const emailCode = user.email ? verificationCodes.get(user.email) : null;
+      const phoneCode = user.phoneNumber ? verificationCodes.get(user.phoneNumber) : null;
+      
+      res.json({
+        email: emailCode,
+        phone: phoneCode
+      });
+    } catch (error) {
+      console.error("Error in test verification codes endpoint:", error);
+      res.status(500).json({ message: "Failed to get verification codes" });
     }
   });
 

@@ -1,6 +1,16 @@
 import { randomInt } from 'crypto';
 import { storage } from './storage';
 
+// Store verification codes for testing
+export const verificationCodes = new Map<string, string>();
+
+// Function to get a verification code for testing
+export function getStoredVerificationCode(key: string): string | undefined {
+  console.log('Looking up verification code for:', key);
+  console.log('All stored codes:', Array.from(verificationCodes.entries()));
+  return verificationCodes.get(key);
+}
+
 // Generate a random 6-digit verification code
 export function generateVerificationCode(): string {
   // Generate a random number between 100000 and 999999
@@ -56,6 +66,11 @@ export async function sendEmailVerification(email: string, code: string): Promis
   // This is a mock function - in a real app you would integrate with an email service
   console.log(`[MOCK] Sending verification email to ${email} with code: ${code}`);
   
+  // Store code for testing retrieval
+  verificationCodes.set(email, code);
+  console.log(`EMAIL VERIFICATION CODE for ${email}: ${code}`);
+  console.log('Updated verification codes:', Array.from(verificationCodes.entries()));
+  
   // Simulate API call to email service
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -70,6 +85,11 @@ export async function sendEmailVerification(email: string, code: string): Promis
 export async function sendSmsVerification(phoneNumber: string, code: string): Promise<boolean> {
   // This is a mock function - in a real app you would integrate with an SMS service
   console.log(`[MOCK] Sending verification SMS to ${phoneNumber} with code: ${code}`);
+  
+  // Store code for testing retrieval
+  verificationCodes.set(phoneNumber, code);
+  console.log(`SMS VERIFICATION CODE for ${phoneNumber}: ${code}`);
+  console.log('Updated verification codes:', Array.from(verificationCodes.entries()));
   
   // Simulate API call to SMS service
   return new Promise((resolve) => {

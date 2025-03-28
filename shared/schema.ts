@@ -123,8 +123,9 @@ export const loginSchema = z.object({
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 // Phone number validation regex pattern - supports various international formats
-// Valid formats: +1234567890, 123-456-7890, (123) 456-7890, etc.
-const phoneRegex = /^(\+?\d{1,3})?[-. (]?\d{3}[-. )]?\d{3}[-. ]?\d{4}$/;
+// Valid formats: +1234567890, 123-456-7890, (123) 456-7890, +354 774 12 74, etc.
+// Very permissive to allow for different international formats and spacing patterns
+const phoneRegex = /^(\+?[\d\s\-().]{7,25})$/;
 
 // Registration validation schema with additional validations
 export const registerSchema = insertUserSchema.extend({
