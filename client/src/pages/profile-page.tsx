@@ -838,7 +838,17 @@ export default function ProfilePage() {
                   <p className="text-xs font-medium text-yellow-800">DEVELOPMENT MODE</p>
                   <p className="text-xs text-yellow-700">
                     Check server logs for verification code or use:<br/>
-                    <span className="font-mono bg-yellow-100 px-1">/api/verification/test/codes</span> endpoint
+                    <a 
+                      href="/api/verification/test/codes" 
+                      target="_blank" 
+                      className="font-mono bg-yellow-100 px-1 hover:bg-yellow-200 inline-block"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.open(`${window.location.origin}/api/verification/test/codes`, '_blank');
+                      }}
+                    >
+                      /api/verification/test/codes
+                    </a>
                   </p>
                 </div>
               </div>
