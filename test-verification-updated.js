@@ -2,7 +2,7 @@
 import fetch from 'node-fetch';
 
 // Base URL for API requests
-const baseUrl = 'http://localhost:3000';
+const baseUrl = 'http://localhost:5000';
 
 // Store auth cookie for authenticated requests
 let authCookies = '';
@@ -138,22 +138,57 @@ async function requestPhoneVerification() {
   }
 }
 
-// Get verification code using the testing endpoint
+// Get verification code using the new test endpoint
 async function getVerificationCode(contact) {
   console.log(`Getting verification code for ${contact}...`);
   
   try {
-    const response = await fetch(`${baseUrl}/api/testing/verification-code?contact=${encodeURIComponent(contact)}`, {
-      method: 'GET'
+    // First try the new test endpoint which returns both email and phone codes
+    const response = await fetch(`${baseUrl}/api/verification/test/codes`, {
+      method: 'GET',
+      headers: {
+        'Cookie': authCookies
+      }
     });
     
-    if (!response.ok) {
-      const error = await response.json();
+    if (response.ok) {
+      const codes = await response.json();
+      console.log('All verification codes:', codes);
+      
+      // Determine if this is an email or phone verification
+      if (contact.includes('@')) {
+        // Email verification
+        if (codes.email) {
+          console.log('Retrieved email verification code:', codes.email);
+          return codes.email;
+        }
+      } else {
+        // Phone verification
+        if (codes.phone) {
+          console.log('Retrieved phone verification code:', codes.phone);
+          return codes.phone;
+        }
+      }
+      
+      console.log('No matching verification code found in response');
+    }
+    
+    // Fall back to the original test endpoint if needed
+    console.log('Falling back to legacy testing endpoint...');
+    const fallbackResponse = await fetch(`${baseUrl}/api/testing/verification-code?contact=${encodeURIComponent(contact)}`, {
+      method: 'GET',
+      headers: {
+        'Cookie': authCookies
+      }
+    });
+    
+    if (!fallbackResponse.ok) {
+      const error = await fallbackResponse.json();
       throw new Error(`Get verification code failed: ${error.message || 'Unknown error'}`);
     }
     
-    const result = await response.json();
-    console.log('Retrieved verification code:', result.code);
+    const result = await fallbackResponse.json();
+    console.log('Retrieved verification code from legacy endpoint:', result.code);
     return result.code;
   } catch (error) {
     console.error('Get verification code error:', error.message);

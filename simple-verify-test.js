@@ -1,16 +1,21 @@
 // Simple verification test script
+// This script automatically tests the email and phone verification process
+// It registers a test user, requests verification codes, and verifies both methods
+// The script uses a special test endpoint (/api/verification/test/codes) to retrieve 
+// the actual verification codes from the server instead of parsing logs
+
 import { setTimeout } from 'timers/promises';
 
-// Test constants
+// Test constants - you can modify these for your own testing
 const TEST_USERNAME = `test_${Date.now()}`;
 const PASSWORD = 'Test123!';
 const FULLNAME = 'Test User';
-const EMAIL = 'ferransson@gmail.com';
-const PHONE = '+354 774 12 74'; // User's requested test phone number
+const EMAIL = 'ferransson@gmail.com'; // Change to your test email
+const PHONE = '+354 774 12 74'; // Change to your test phone number
 const BASE_URL = 'http://localhost:5000';
 let sessionCookie = '';
 
-// We will parse verification codes from the logs
+// Verification codes will be retrieved from the server
 let EMAIL_VERIFICATION_CODE = '';
 let PHONE_VERIFICATION_CODE = '';
 

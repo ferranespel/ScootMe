@@ -21,11 +21,23 @@ import {
 } from "./verification";
 
 // Helper to check if user is authenticated
-function isAuthenticated(req: any, res: any, next: any) {
+function isAuthenticated(req: Request, res: Response, next: Function) {
   if (req.isAuthenticated()) {
     return next();
   }
   res.status(401).json({ message: "Authentication required" });
+}
+
+// TypeScript interface augmentation to make req.user accessible with correct typing
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: number;
+        [key: string]: any;
+      }
+    }
+  }
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -589,6 +601,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TEST ONLY: Endpoint to get verification codes for a user
   app.get("/api/verification/test/codes", isAuthenticated, async (req, res) => {
     try {
+      // The isAuthenticated middleware guarantees req.user exists, but TypeScript doesn't know that
+      // The extra check here is for TypeScript's benefit
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -601,9 +615,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Import the verification module to access codes
       const { verificationCodes } = await import('./verification');
       
-      // Get the verification codes
-      const emailCode = user.email ? verificationCodes.get(user.email) : null;
-      const phoneCode = user.phoneNumber ? verificationCodes.get(user.phoneNumber) : null;
+      // Get the verification codes from the user object directly
+      // This is more reliable than using the Map since codes are stored on the user
+      const emailCode = user.emailVerificationCode || null;
+      const phoneCode = user.phoneVerificationCode || null;
       
       res.json({
         email: emailCode,
