@@ -1,104 +1,91 @@
-# Verification System Testing Guide
+# Verification Testing Guide
 
-This document provides guidance on how to test the email and phone verification system in the Scooter Rental App.
+This document explains how to test the email and phone verification system in the app.
 
-## Verification System Overview
+## Overview
 
-The verification system allows users to verify their email and phone number through verification codes. The system has these main components:
+The app includes a verification system that allows users to verify their email addresses and phone numbers. 
+During development, the system uses mock email and SMS services (no actual emails or SMS are sent).
 
-1. **Verification Request Endpoints**: API endpoints to request verification codes for email and phone
-2. **Verification Status Endpoint**: API endpoint to check if email and phone are verified
-3. **Verification Code Endpoints**: API endpoints to verify email and phone using codes
-4. **Mock Delivery System**: Simulated email and SMS delivery (logs codes to console in development)
-5. **Test Endpoints**: Special endpoints to retrieve verification codes for testing
+## How Verification Works
 
-## Test Scripts
+1. When a user requests verification:
+   - A 6-digit random code is generated
+   - The code is stored with the user account
+   - In production, the code would be sent via email or SMS
+   - In development, the code is logged to the console
 
-We have created several test scripts to verify the functionality of the verification system:
+2. When a user verifies their contact:
+   - The submitted code is compared with the stored code
+   - If valid and not expired, the contact is marked as verified
 
-### 1. `simple-verify-test.js`
+## Testing the Verification System
 
-This is the simplest test script that:
-- Registers a test user
-- Requests verification codes for email and phone
-- Gets the verification codes using the `/api/verification/test/codes` endpoint
-- Verifies both email and phone
-- Confirms the verification status
+### Option 1: Using Development Notification
 
-Usage:
+When using the verification dialog in development mode, a yellow notification banner appears with instructions.
+
+### Option 2: Check Server Logs
+
+When verification codes are generated, they are logged to the console:
+
 ```
-node simple-verify-test.js
-```
-
-### 2. `test-verification-updated.js`
-
-This is a more comprehensive test script that:
-- Registers a test user
-- Tests email verification with more detailed logging
-- Tests phone verification with more detailed logging
-- Has better error handling and fallback mechanisms
-
-Usage:
-```
-node test-verification-updated.js
+[MOCK] Sending verification email to user@example.com with code: 123456
+EMAIL VERIFICATION CODE for user@example.com: 123456
 ```
 
-## Test Endpoints
+or
 
-For testing purposes, we have implemented two special endpoints:
+```
+[MOCK] Sending verification SMS to +1234567890 with code: 123456
+SMS VERIFICATION CODE for +1234567890: 123456
+```
 
-### 1. `/api/verification/test/codes`
+### Option 3: Using the Test API Endpoint
 
-This endpoint returns all active verification codes for the currently logged-in user. The response format is:
+A special endpoint has been created to simplify testing:
+
+```
+GET /api/verification/test/codes
+```
+
+This endpoint returns all active verification codes as JSON:
+
 ```json
 {
-  "email": "123456",  // Current email verification code (if exists)
-  "phone": "654321"   // Current phone verification code (if exists)
+  "message": "DEVELOPMENT ONLY: Active verification codes",
+  "codes": [
+    {
+      "contact": "user@example.com",
+      "code": "123456"
+    },
+    {
+      "contact": "+1234567890",
+      "code": "654321"
+    }
+  ]
 }
 ```
 
-Authentication is required to use this endpoint, and it's only available in development mode.
+You can access this endpoint using curl:
 
-### 2. `/api/testing/verification-code` (Legacy)
-
-This is an older endpoint that requires a contact parameter and returns a specific code:
-```json
-{
-  "contact": "user@example.com",
-  "code": "123456"
-}
+```bash
+curl http://localhost:5000/api/verification/test/codes
 ```
 
-The first endpoint is preferred as it doesn't require knowing which codes are active.
+**Important Note**: This endpoint is for development and testing only. In a production environment, this endpoint should be disabled or secured with appropriate authentication.
 
-## Test User
+## Test Email and Phone
 
-For testing, we use these test credentials:
-- Email: `ferransson@gmail.com`
-- Phone: `+354 774 12 74`
+For consistent testing, you can use:
 
-## Manual Testing
+- Email: ferransson@gmail.com 
+- Phone: +354 774 12 74
 
-To manually test the verification system:
+## Troubleshooting
 
-1. Create a user with the test email and phone
-2. Request email verification from the profile page
-3. Get the verification code from the console logs or use the test endpoint
-4. Enter the code on the verification page
-5. Check that the email shows as verified
-6. Repeat steps 2-5 for phone verification
+1. **Code not working?** A new code is generated each time you request verification. Always use the most recent code.
 
-## Code Update Notes
+2. **No codes showing in test endpoint?** You need to request a verification code first through the UI before any codes will be available.
 
-If you make changes to the verification system, ensure all test scripts still pass:
-```
-node simple-verify-test.js
-node test-verification-updated.js
-```
-
-## Security Notes
-
-- The test endpoints should NEVER be enabled in production
-- Real email and SMS services should be used in production
-- In production, verification codes should expire after a short time
-- Only authenticated users can request verification for their own contact methods
+3. **Verification not persisting?** The current implementation uses in-memory storage that resets when the server restarts.

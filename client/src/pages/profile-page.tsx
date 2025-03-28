@@ -832,6 +832,15 @@ export default function ProfilePage() {
                     Didn't receive the code? Wait 1 minute before requesting again.
                   </p>
                 </div>
+
+                {/* DEV MODE ONLY: Show verification codes from server logs */}
+                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <p className="text-xs font-medium text-yellow-800">DEVELOPMENT MODE</p>
+                  <p className="text-xs text-yellow-700">
+                    Check server logs for verification code or use:<br/>
+                    <span className="font-mono bg-yellow-100 px-1">/api/verification/test/codes</span> endpoint
+                  </p>
+                </div>
               </div>
             </div>
             <DialogFooter>

@@ -17,7 +17,8 @@ import {
   sendEmailVerification,
   sendSmsVerification,
   markEmailAsVerified,
-  markPhoneAsVerified
+  markPhoneAsVerified,
+  verificationCodes
 } from "./verification";
 
 // Helper to check if user is authenticated
@@ -597,35 +598,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get verification status" });
     }
   });
-
-  // TEST ONLY: Endpoint to get verification codes for a user
-  app.get("/api/verification/test/codes", isAuthenticated, async (req, res) => {
+  
+  // DEVELOPMENT ONLY: Get verification codes for testing
+  app.get("/api/verification/test/codes", async (req, res) => {
+    // This endpoint is for development purposes only
+    // In production, this would be disabled or protected
     try {
-      // The isAuthenticated middleware guarantees req.user exists, but TypeScript doesn't know that
-      // The extra check here is for TypeScript's benefit
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      const user = await storage.getUser(req.user.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Import the verification module to access codes
-      const { verificationCodes } = await import('./verification');
-      
-      // Get the verification codes from the user object directly
-      // This is more reliable than using the Map since codes are stored on the user
-      const emailCode = user.emailVerificationCode || null;
-      const phoneCode = user.phoneVerificationCode || null;
-      
+      // Type assertion to ensure TypeScript knows the structure
+      const codes = Array.from(verificationCodes.entries()) as [string, string][];
       res.json({
-        email: emailCode,
-        phone: phoneCode
+        message: "DEVELOPMENT ONLY: Active verification codes",
+        codes: codes.map(([contact, code]) => ({
+          contact,
+          code
+        }))
       });
     } catch (error) {
-      console.error("Error in test verification codes endpoint:", error);
+      console.error("Error in verification test codes endpoint:", error);
       res.status(500).json({ message: "Failed to get verification codes" });
     }
   });
