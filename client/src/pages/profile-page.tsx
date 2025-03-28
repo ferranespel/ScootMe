@@ -24,7 +24,8 @@ import {
   CheckCircle,
   XCircle,
   Mail,
-  Check
+  Check,
+  Globe
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +35,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useTranslation } from 'react-i18next';
+import { LanguageSelector } from '@/components/language-selector';
+import { getSupportedLanguages } from '@/i18n';
 
 // Form validation schemas
 const updateProfileSchema = z.object({
@@ -58,6 +62,7 @@ export default function ProfilePage() {
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const { t, i18n } = useTranslation();
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [supportMessage, setSupportMessage] = useState('');

@@ -5,6 +5,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { useTranslation } from 'react-i18next';
+import { LanguageSelector } from '@/components/language-selector';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -15,6 +17,7 @@ export function MainLayout({ children, showBottomNav = true }: MainLayoutProps) 
   const { user, logoutMutation } = useAuth();
   const [location] = useLocation();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   // Get user initials for avatar
   const getUserInitials = () => {
@@ -65,6 +68,9 @@ export function MainLayout({ children, showBottomNav = true }: MainLayoutProps) 
               />
             </svg>
             <h1 className="text-xl font-bold">ScootMe</h1>
+            <div className="ml-4">
+              <LanguageSelector variant="minimal" />
+            </div>
           </div>
           
           {user && (

@@ -10,6 +10,8 @@ import WalletPage from "@/pages/wallet-page";
 import ProfilePage from "@/pages/profile-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "@/hooks/use-auth";
+import { I18nextProvider } from "react-i18next";
+import i18n from "@/i18n";
 
 function Router() {
   return (
@@ -27,10 +29,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router />
-        <Toaster />
-      </AuthProvider>
+      <I18nextProvider i18n={i18n}>
+        <AuthProvider>
+          <Router />
+          <Toaster />
+        </AuthProvider>
+      </I18nextProvider>
     </QueryClientProvider>
   );
 }
