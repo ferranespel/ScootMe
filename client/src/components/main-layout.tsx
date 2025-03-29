@@ -100,7 +100,7 @@ export function MainLayout({ children, showBottomNav = true }: MainLayoutProps) 
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 relative overflow-hidden">
+      <main className="flex-1 overflow-y-auto">
         {children}
       </main>
 

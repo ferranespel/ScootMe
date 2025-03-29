@@ -402,7 +402,7 @@ export default function ProfilePage() {
 
   return (
     <MainLayout>
-      <div className="container mx-auto p-4 pb-20">
+      <div className="container mx-auto p-4 pb-20 overflow-y-auto max-h-[calc(100vh-4rem)]">
         <h1 className="text-2xl font-bold mb-6">Profile</h1>
         
         {/* User Profile Card */}
