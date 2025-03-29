@@ -24,7 +24,8 @@ import {
   CheckCircle,
   XCircle,
   Mail,
-  Check
+  Check,
+  Globe
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +35,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useTranslation } from 'react-i18next';
+import { getSupportedLanguages } from '@/i18n';
 
 // Form validation schemas
 const updateProfileSchema = z.object({
@@ -527,7 +530,7 @@ export default function ProfilePage() {
             </DialogHeader>
             <div className="py-4">
               <div className="grid grid-cols-1 gap-4">
-                {getSupportedLanguages().map((lang) => (
+                {getSupportedLanguages().map((lang: { code: string; name: string }) => (
                   <Button
                     key={lang.code}
                     variant={i18n.language && i18n.language.startsWith(lang.code) ? "default" : "outline"}
