@@ -58,6 +58,7 @@ export default function ProfilePage() {
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const { t, i18n } = useTranslation();
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [supportMessage, setSupportMessage] = useState('');
