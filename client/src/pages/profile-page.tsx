@@ -24,8 +24,7 @@ import {
   CheckCircle,
   XCircle,
   Mail,
-  Check,
-  Globe
+  Check
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -35,9 +34,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { useTranslation } from 'react-i18next';
-import { LanguageSelector } from '@/components/language-selector';
-import { getSupportedLanguages } from '@/i18n';
 
 // Form validation schemas
 const updateProfileSchema = z.object({
@@ -62,7 +58,6 @@ export default function ProfilePage() {
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const { t, i18n } = useTranslation();
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [supportMessage, setSupportMessage] = useState('');
@@ -326,28 +321,31 @@ export default function ProfilePage() {
     setVerificationDialogOpen(true);
   };
   
+  // State for language settings dialog
+  const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
+  
   const profileMenuItems = [
     {
       icon: User,
-      label: "Account Details",
+      label: t('profile.my_profile', "Account Details"),
       onClick: () => navigate("/profile"),
     },
     {
       icon: CreditCard,
-      label: "Payment Methods",
+      label: t('payments.payment_methods', "Payment Methods"),
       onClick: () => navigate("/wallet"),
     },
     {
       icon: Mail,
-      label: "Verify Contact Information",
+      label: t('auth.verification_status', "Verify Contact Information"),
       onClick: () => {
         const isEmailVerified = verificationStatus?.email.verified;
         const isPhoneVerified = verificationStatus?.phone.verified;
         
         if (isEmailVerified && (isPhoneVerified || !verificationStatus?.phone.number)) {
           toast({
-            title: "Already Verified",
-            description: "Your contact information is already verified!",
+            title: t('common.success', "Already Verified"),
+            description: t('profile.verification_status', "Your contact information is already verified!"),
           });
           return;
         }
@@ -361,32 +359,38 @@ export default function ProfilePage() {
       },
       badge: verificationStatus?.email.verified && 
              (verificationStatus?.phone.verified || !verificationStatus?.phone.number) ? 
-             "Verified" : "Action Required"
+             t('auth.verified', "Verified") : t('common.warning', "Action Required")
+    },
+    {
+      icon: Globe,
+      label: t('profile.app_language', "App Language"),
+      onClick: () => setLanguageDialogOpen(true),
+      currentValue: i18n.language ? i18n.language.split('-')[0] : 'en'
     },
     {
       icon: Bell,
-      label: "Notifications",
+      label: t('notifications.notifications', "Notifications"),
       onClick: () => toast({
-        title: "Coming Soon",
-        description: "Notification settings will be available soon",
+        title: t('common.coming_soon', "Coming Soon"),
+        description: t('profile.notifications', "Notification settings will be available soon"),
       }),
     },
     {
       icon: Shield,
-      label: "Privacy & Security",
+      label: t('profile.privacy_security', "Privacy & Security"),
       onClick: () => toast({
-        title: "Coming Soon",
-        description: "Privacy settings will be available soon",
+        title: t('common.coming_soon', "Coming Soon"),
+        description: t('profile.privacy_security', "Privacy settings will be available soon"),
       }),
     },
     {
       icon: HelpCircle,
-      label: "Help & Support",
+      label: t('help.help_support', "Help & Support"),
       onClick: () => setSupportDialogOpen(true),
     },
     {
       icon: LogOut,
-      label: "Sign Out",
+      label: t('auth.logout', "Sign Out"),
       onClick: () => setConfirmDialogOpen(true),
       variant: "destructive",
     },
@@ -494,12 +498,17 @@ export default function ProfilePage() {
                 <div className="flex items-center">
                   {item.badge && (
                     <span className={`mr-2 text-xs px-2 py-1 rounded-full ${
-                      item.badge === "Verified" 
+                      item.badge === t('auth.verified', "Verified") 
                         ? "bg-green-100 text-green-800" 
                         : "bg-yellow-100 text-yellow-800"
                     }`}>
-                      {item.badge === "Verified" && <Check className="inline-block h-3 w-3 mr-1" />}
+                      {item.badge === t('auth.verified', "Verified") && <Check className="inline-block h-3 w-3 mr-1" />}
                       {item.badge}
+                    </span>
+                  )}
+                  {item.currentValue && (
+                    <span className="mr-2 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                      {item.currentValue.toUpperCase()}
                     </span>
                   )}
                   <ChevronRight className="h-5 w-5 text-gray-400" />
@@ -508,6 +517,40 @@ export default function ProfilePage() {
             ))}
           </CardContent>
         </Card>
+
+        {/* Language Settings Dialog */}
+        <Dialog open={languageDialogOpen} onOpenChange={setLanguageDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t('profile.app_language', 'App Language')}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <div className="grid grid-cols-1 gap-4">
+                {getSupportedLanguages().map((lang) => (
+                  <Button
+                    key={lang.code}
+                    variant={i18n.language && i18n.language.startsWith(lang.code) ? "default" : "outline"}
+                    className="justify-start"
+                    onClick={() => {
+                      i18n.changeLanguage(lang.code);
+                      setLanguageDialogOpen(false);
+                      toast({
+                        title: t('profile.language_updated', 'Language Updated'),
+                        description: t('profile.language_change_success', 'App language has been changed successfully'),
+                      });
+                    }}
+                  >
+                    <Globe className="h-4 w-4 mr-2" />
+                    {lang.name}
+                    {i18n.language && i18n.language.startsWith(lang.code) && (
+                      <Check className="h-4 w-4 ml-auto" />
+                    )}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Logout Confirmation Dialog */}
         <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
