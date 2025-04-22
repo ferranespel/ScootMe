@@ -5,7 +5,7 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  password: text("password"),  // Can be null for OAuth users
   email: text("email").notNull(),
   isEmailVerified: boolean("is_email_verified").default(false).notNull(),
   emailVerificationCode: text("email_verification_code"),
@@ -18,6 +18,9 @@ export const users = pgTable("users", {
   profilePicture: text("profile_picture"),
   balance: doublePrecision("balance").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // OAuth related fields
+  providerId: text("provider_id"),  // 'google', 'apple', 'phone'
+  providerAccountId: text("provider_account_id"),  // ID from the provider
 });
 
 export const scooters = pgTable("scooters", {
@@ -62,6 +65,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   phoneNumber: true,
   profilePicture: true,
   balance: true,
+  providerId: true,
+  providerAccountId: true,
 });
 
 export const insertScooterSchema = createInsertSchema(scooters).pick({
@@ -181,4 +186,16 @@ export const requestVerificationSchema = z.object({
   method: z.enum(["email", "phone"], {
     errorMap: () => ({ message: "Method must be either email or phone" }),
   })
+});
+
+// Phone login schema 
+export const phoneLoginSchema = z.object({
+  phoneNumber: z.string()
+    .regex(phoneRegex, "Please enter a valid phone number")
+});
+
+// Phone verification code schema
+export const phoneVerificationCodeSchema = z.object({
+  phoneNumber: z.string().regex(phoneRegex, "Please enter a valid phone number"),
+  code: z.string().length(6, "Verification code must be 6 digits")
 });

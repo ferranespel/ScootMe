@@ -4,7 +4,13 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { registerSchema, loginSchema, User as SelectUser } from "@shared/schema";
+import { 
+  registerSchema, 
+  loginSchema, 
+  phoneLoginSchema, 
+  phoneVerificationCodeSchema,
+  User as SelectUser 
+} from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -16,10 +22,16 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, RegisterData>;
+  phoneLoginMutation: UseMutationResult<void, Error, PhoneLoginData>;
+  phoneVerifyMutation: UseMutationResult<SelectUser, Error, PhoneVerifyData>;
+  googleLoginMutation: UseMutationResult<void, Error, void>;
+  appleLoginMutation: UseMutationResult<void, Error, void>;
 };
 
 type LoginData = z.infer<typeof loginSchema>;
 type RegisterData = z.infer<typeof registerSchema>;
+type PhoneLoginData = z.infer<typeof phoneLoginSchema>;
+type PhoneVerifyData = z.infer<typeof phoneVerificationCodeSchema>;
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
