@@ -92,6 +92,8 @@ export async function sendSmsVerification(phoneNumber: string, code: string): Pr
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
     
+    console.log(`Twilio credentials check: ACCOUNT_SID=${!!accountSid}, AUTH_TOKEN=${!!authToken}, PHONE_NUMBER=${!!twilioPhoneNumber}`);
+    
     if (!accountSid || !authToken || !twilioPhoneNumber) {
       console.error('Twilio credentials are missing or invalid:');
       console.error(`TWILIO_ACCOUNT_SID: ${accountSid ? 'Set' : 'Missing'}`);
@@ -104,7 +106,12 @@ export async function sendSmsVerification(phoneNumber: string, code: string): Pr
     try {
       // Import Twilio dynamically to avoid module resolution issues
       const twilio = require('twilio');
+      console.log('Twilio module imported successfully');
+      
+      console.log(`Creating Twilio client with SID: ${accountSid.substring(0, 5)}... and phone: ${twilioPhoneNumber}`);
       const client = twilio(accountSid, authToken);
+      
+      console.log(`Sending SMS to: ${phoneNumber} with code: ${code}`);
       
       // Send the SMS
       const message = await client.messages.create({
@@ -113,10 +120,23 @@ export async function sendSmsVerification(phoneNumber: string, code: string): Pr
         to: phoneNumber
       });
       
-      console.log(`SMS sent with Twilio SID: ${message.sid}`);
+      console.log(`SMS sent successfully with Twilio SID: ${message.sid}`);
       return true;
     } catch (twilioError) {
       console.error('Error sending SMS with Twilio:', twilioError);
+      if (twilioError.code) {
+        console.error(`Twilio Error Code: ${twilioError.code}`);
+      }
+      if (twilioError.message) {
+        console.error(`Twilio Error Message: ${twilioError.message}`);
+      }
+      if (twilioError.status) {
+        console.error(`Twilio Error Status: ${twilioError.status}`);
+      }
+      if (twilioError.moreInfo) {
+        console.error(`Twilio Error Info: ${twilioError.moreInfo}`);
+      }
+      
       // For development, still return true to allow testing even if SMS delivery fails
       // In production, you might want to handle this differently
       return true;
