@@ -10,6 +10,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByPhone(phoneNumber: string): Promise<User | undefined>;
+  getUserByProviderId(providerId: string, providerAccountId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(userId: number, updates: Partial<User>): Promise<User | undefined>;
   updateUserBalance(userId: number, amount: number): Promise<User | undefined>;
@@ -220,6 +221,12 @@ export class MemStorage implements IStorage {
   async getUserByPhone(phoneNumber: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
       (user) => user.phoneNumber === phoneNumber,
+    );
+  }
+  
+  async getUserByProviderId(providerId: string, providerAccountId: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.providerId === providerId && user.providerAccountId === providerAccountId,
     );
   }
 

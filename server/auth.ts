@@ -1,5 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
@@ -45,6 +46,56 @@ export function setupAuth(app: Express) {
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
+  
+  // Set up Google OAuth strategy
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        callbackURL: "/api/auth/google/callback",
+        scope: ["profile", "email"],
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          // Check if we already have a user with this Google ID
+          const providerId = "google";
+          const providerAccountId = profile.id;
+          
+          // Find user by provider ID
+          let user = await storage.getUserByProviderId(providerId, providerAccountId);
+          
+          if (!user) {
+            // Create a new user
+            const email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+            if (!email) {
+              return done(new Error("Email is required from Google"));
+            }
+            
+            // Generate a username based on display name or email
+            const name = profile.displayName || email.split('@')[0];
+            const username = `${name.toLowerCase().replace(/\s+/g, '_')}_${Math.floor(Math.random() * 1000)}`;
+            
+            // Create the user
+            user = await storage.createUser({
+              username,
+              email,
+              fullName: profile.displayName || username,
+              password: null, // No password for OAuth users
+              profilePicture: profile.photos && profile.photos[0] ? profile.photos[0].value : null,
+              providerId,
+              providerAccountId,
+              isEmailVerified: true // Email is verified through Google
+            });
+          }
+          
+          return done(null, user);
+        } catch (error) {
+          return done(error);
+        }
+      }
+    )
+  );
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
@@ -144,4 +195,16 @@ export function setupAuth(app: Express) {
     const { password, ...userWithoutPassword } = req.user;
     res.json(userWithoutPassword);
   });
+  
+  // Google OAuth routes
+  app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+  
+  app.get(
+    "/api/auth/google/callback",
+    passport.authenticate("google", { failureRedirect: "/auth" }),
+    (req, res) => {
+      // Successful authentication, redirect to home page
+      res.redirect("/");
+    }
+  );
 }
