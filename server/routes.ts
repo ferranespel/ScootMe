@@ -5,7 +5,8 @@ import { setupAuth } from "./auth";
 import { 
   insertScooterSchema, insertRideSchema, updateRideSchema, 
   insertPaymentSchema, updateUserSchema, changePasswordSchema,
-  verifyEmailSchema, verifyPhoneSchema, requestVerificationSchema
+  verifyEmailSchema, verifyPhoneSchema, requestVerificationSchema,
+  phoneLoginSchema, phoneVerificationCodeSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";

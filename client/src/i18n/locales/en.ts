@@ -62,6 +62,18 @@ const translation = {
     send_code: "Send Code",
     verifying: "Verifying...",
     verification_status: "Verification Status",
+    // New strings for updated auth UI
+    welcome: "Welcome to ScootMe",
+    tagline: "Urban Mobility Simplified",
+    loginDescription: "Sign in to start your journey",
+    continueWithGoogle: "Continue with Google",
+    continueWithApple: "Continue with Apple",
+    continueWithPhone: "Continue with Phone",
+    orContinueWith: "or",
+    phoneNumber: "Phone Number",
+    sendingCode: "Sending verification code...",
+    backToPhoneEntry: "Back to phone entry",
+    termsText: "By signing in, you agree to our Terms of Service and Privacy Policy",
   },
 
   // Profile and user settings

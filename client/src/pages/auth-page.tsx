@@ -15,48 +15,65 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { registerSchema, loginSchema } from "@shared/schema";
-import { Loader2 } from "lucide-react";
+import { phoneLoginSchema } from "@shared/schema";
+import { Loader2, Apple, Phone } from "lucide-react";
+import { FcGoogle } from "react-icons/fc";
+import { useTranslation } from "react-i18next";
+import { LanguageSelector } from "@/components/language-selector";
 
 export default function AuthPage() {
-  const { user, isLoading, loginMutation, registerMutation } = useAuth();
+  const { t } = useTranslation();
+  const { 
+    user, 
+    isLoading, 
+    phoneLoginMutation, 
+    phoneVerifyMutation, 
+    googleLoginMutation, 
+    appleLoginMutation 
+  } = useAuth();
   const [, navigate] = useLocation();
-  const [activeTab, setActiveTab] = useState<"login" | "register">("login");
+  const [phoneStep, setPhoneStep] = useState<"phoneEntry" | "codeVerification">("phoneEntry");
+  const [phoneNumber, setPhoneNumber] = useState("");
 
-  // Login form
-  const loginForm = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
+  // Phone Login form
+  const phoneForm = useForm<z.infer<typeof phoneLoginSchema>>({
+    resolver: zodResolver(phoneLoginSchema),
     defaultValues: {
-      username: "",
-      password: "",
-    },
-  });
-
-  // Register form
-  const registerForm = useForm<z.infer<typeof registerSchema>>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-      email: "",
-      fullName: "",
       phoneNumber: "",
-      balance: 25,
     },
   });
 
-  const onLoginSubmit = (values: z.infer<typeof loginSchema>) => {
-    loginMutation.mutate(values);
+  // Phone Verification form
+  const verificationForm = useForm({
+    defaultValues: {
+      code: "",
+    },
+  });
+
+  const onPhoneLoginSubmit = (values: z.infer<typeof phoneLoginSchema>) => {
+    setPhoneNumber(values.phoneNumber);
+    phoneLoginMutation.mutate(values, {
+      onSuccess: () => {
+        setPhoneStep("codeVerification");
+      }
+    });
   };
 
-  const onRegisterSubmit = (values: z.infer<typeof registerSchema>) => {
-    registerMutation.mutate(values);
+  const onVerificationSubmit = (values: { code: string }) => {
+    phoneVerifyMutation.mutate({
+      phoneNumber,
+      code: values.code
+    });
+  };
+
+  // Handle Google login
+  const handleGoogleLogin = () => {
+    googleLoginMutation.mutate();
+  };
+
+  // Handle Apple login
+  const handleAppleLogin = () => {
+    appleLoginMutation.mutate();
   };
 
   // Redirect if already logged in
@@ -75,212 +92,169 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Hero Section */}
-      <div className="flex-1 bg-gradient-to-br from-primary to-secondary p-8 text-white flex flex-col justify-center items-center lg:h-screen">
-        <div className="max-w-md text-center lg:text-left">
-          <div className="mb-6 flex justify-center lg:justify-start">
-            <div className="flex items-center space-x-2">
-              <svg 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-8 w-8 text-white"
-              >
-                <path 
-                  d="M3.05493 11H10L12 14H19.9451M6.5 18C6.5 19.1046 5.60457 20 4.5 20C3.39543 20 2.5 19.1046 2.5 18C2.5 16.8954 3.39543 16 4.5 16C5.60457 16 6.5 16.8954 6.5 18ZM20.5 18C20.5 19.1046 19.6046 20 18.5 20C17.3954 20 16.5 19.1046 16.5 18C16.5 16.8954 17.3954 16 18.5 16C19.6046 16 20.5 16.8954 20.5 18ZM14.5 6L16.5 9H21.5L19.5 6H14.5Z" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <h1 className="text-3xl font-bold">ScootMe</h1>
-            </div>
-          </div>
-          <h2 className="text-4xl font-bold mb-4">Urban Mobility Simplified</h2>
-          <p className="text-lg mb-8">
-            Rent electric scooters on-demand at the tap of a button. 
-            Quick, sustainable, and affordable rides for your daily commute.
-          </p>
-          <div className="grid grid-cols-2 gap-6 mb-8">
-            <div className="text-center bg-white/10 p-4 rounded-lg">
-              <h3 className="font-bold text-xl">Easy to Use</h3>
-              <p className="mt-2 text-sm">Scan, ride, and park anywhere in the city</p>
-            </div>
-            <div className="text-center bg-white/10 p-4 rounded-lg">
-              <h3 className="font-bold text-xl">Eco-Friendly</h3>
-              <p className="mt-2 text-sm">Zero emissions for a greener urban environment</p>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-primary/5 to-secondary/5">
+      {/* Language selector in top-left */}
+      <div className="absolute top-4 left-4 z-10">
+        <LanguageSelector variant="minimal" />
       </div>
       
-      {/* Auth Forms */}
-      <div className="flex-1 p-8 flex items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center p-6">
+        {/* Logo and App Name */}
+        <div className="mb-12 flex flex-col items-center">
+          <div className="flex items-center justify-center w-24 h-24 bg-primary rounded-full mb-4">
+            <svg 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-12 w-12 text-white"
+            >
+              <path 
+                d="M3.05493 11H10L12 14H19.9451M6.5 18C6.5 19.1046 5.60457 20 4.5 20C3.39543 20 2.5 19.1046 2.5 18C2.5 16.8954 3.39543 16 4.5 16C5.60457 16 6.5 16.8954 6.5 18ZM20.5 18C20.5 19.1046 19.6046 20 18.5 20C17.3954 20 16.5 19.1046 16.5 18C16.5 16.8954 17.3954 16 18.5 16C19.6046 16 20.5 16.8954 20.5 18ZM14.5 6L16.5 9H21.5L19.5 6H14.5Z" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            ScootMe
+          </h1>
+          <p className="text-lg text-center mt-2">{t('auth.tagline')}</p>
+        </div>
+        
+        {/* Auth Card */}
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-center">
-              Welcome to ScootMe
+              {t('auth.welcome')}
             </CardTitle>
             <CardDescription className="text-center">
-              Sign in to your account or create a new one
+              {t('auth.loginDescription')}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "register")}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
-              </TabsList>
+          <CardContent className="space-y-6">
+            {/* Social Login Buttons */}
+            <div className="grid gap-4">
+              <Button 
+                variant="outline" 
+                className="flex items-center justify-center gap-2 h-12"
+                onClick={handleGoogleLogin}
+                disabled={googleLoginMutation.isPending}
+              >
+                {googleLoginMutation.isPending ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <FcGoogle className="h-5 w-5" />
+                )}
+                <span>{t('auth.continueWithGoogle')}</span>
+              </Button>
               
-              <TabsContent value="login">
-                <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-username">Username</Label>
+              <Button 
+                variant="outline" 
+                className="flex items-center justify-center gap-2 h-12"
+                onClick={handleAppleLogin}
+                disabled={appleLoginMutation.isPending}
+              >
+                {appleLoginMutation.isPending ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Apple className="h-5 w-5" />
+                )}
+                <span>{t('auth.continueWithApple')}</span>
+              </Button>
+            </div>
+            
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative bg-white px-4 text-sm text-gray-500">
+                {t('auth.orContinueWith')}
+              </div>
+            </div>
+            
+            {/* Phone Authentication */}
+            {phoneStep === "phoneEntry" ? (
+              <form onSubmit={phoneForm.handleSubmit(onPhoneLoginSubmit)} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone-number">{t('auth.phoneNumber')}</Label>
+                  <div className="flex">
                     <Input
-                      id="login-username"
-                      type="text"
-                      placeholder="johndoe"
-                      {...loginForm.register("username")}
-                    />
-                    {loginForm.formState.errors.username && (
-                      <p className="text-red-500 text-sm">
-                        {loginForm.formState.errors.username.message}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      placeholder="••••••••"
-                      {...loginForm.register("password")}
-                    />
-                    {loginForm.formState.errors.password && (
-                      <p className="text-red-500 text-sm">
-                        {loginForm.formState.errors.password.message}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={loginMutation.isPending}
-                  >
-                    {loginMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Logging in...
-                      </>
-                    ) : (
-                      "Sign In"
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-              
-              <TabsContent value="register">
-                <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="register-fullname">Full Name</Label>
-                    <Input
-                      id="register-fullname"
-                      type="text"
-                      placeholder="John Doe"
-                      {...registerForm.register("fullName")}
-                    />
-                    {registerForm.formState.errors.fullName && (
-                      <p className="text-red-500 text-sm">
-                        {registerForm.formState.errors.fullName.message}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
-                    <Input
-                      id="register-email"
-                      type="email"
-                      placeholder="john@example.com"
-                      {...registerForm.register("email")}
-                    />
-                    {registerForm.formState.errors.email && (
-                      <p className="text-red-500 text-sm">
-                        {registerForm.formState.errors.email.message}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="register-username">Username</Label>
-                    <Input
-                      id="register-username"
-                      type="text"
-                      placeholder="johndoe"
-                      {...registerForm.register("username")}
-                    />
-                    {registerForm.formState.errors.username && (
-                      <p className="text-red-500 text-sm">
-                        {registerForm.formState.errors.username.message}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="register-password">Password</Label>
-                    <Input
-                      id="register-password"
-                      type="password"
-                      placeholder="••••••••"
-                      {...registerForm.register("password")}
-                    />
-                    {registerForm.formState.errors.password && (
-                      <p className="text-red-500 text-sm">
-                        {registerForm.formState.errors.password.message}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="register-phone">Phone Number (Optional)</Label>
-                    <Input
-                      id="register-phone"
+                      id="phone-number"
                       type="tel"
-                      placeholder="+354 123 4567"
-                      {...registerForm.register("phoneNumber")}
+                      placeholder="+354 774 12 74"
+                      className="flex-1"
+                      {...phoneForm.register("phoneNumber")}
                     />
-                    {registerForm.formState.errors.phoneNumber && (
-                      <p className="text-red-500 text-sm">
-                        {registerForm.formState.errors.phoneNumber.message}
-                      </p>
-                    )}
                   </div>
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={registerMutation.isPending}
-                  >
-                    {registerMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating account...
-                      </>
-                    ) : (
-                      "Create Account"
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+                  {phoneForm.formState.errors.phoneNumber && (
+                    <p className="text-red-500 text-sm">
+                      {phoneForm.formState.errors.phoneNumber.message}
+                    </p>
+                  )}
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 flex items-center gap-2" 
+                  disabled={phoneLoginMutation.isPending}
+                >
+                  {phoneLoginMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>{t('auth.sendingCode')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Phone className="h-5 w-5" />
+                      <span>{t('auth.continueWithPhone')}</span>
+                    </>
+                  )}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={verificationForm.handleSubmit(onVerificationSubmit)} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="verification-code">{t('auth.verificationCode')}</Label>
+                  <Input
+                    id="verification-code"
+                    type="text"
+                    placeholder="123456"
+                    maxLength={6}
+                    {...verificationForm.register("code")}
+                  />
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full h-12" 
+                  disabled={phoneVerifyMutation.isPending}
+                >
+                  {phoneVerifyMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      {t('auth.verifying')}
+                    </>
+                  ) : (
+                    t('auth.verify')
+                  )}
+                </Button>
+                
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  className="w-full" 
+                  onClick={() => setPhoneStep("phoneEntry")}
+                >
+                  {t('auth.backToPhoneEntry')}
+                </Button>
+              </form>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col items-center">
-            <p className="text-sm text-gray-500">
-              By signing in or creating an account, you agree to our Terms of Service and Privacy Policy.
+            <p className="text-sm text-gray-500 text-center">
+              {t('auth.termsText')}
             </p>
           </CardFooter>
         </Card>

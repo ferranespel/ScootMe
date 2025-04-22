@@ -108,6 +108,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const phoneLoginMutation = useMutation({
+    mutationFn: async (data: PhoneLoginData) => {
+      const res = await apiRequest("POST", "/api/auth/phone/login", data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Verification code sent",
+        description: "Please check your phone for a verification code",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Phone login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const phoneVerifyMutation = useMutation({
+    mutationFn: async (data: PhoneVerifyData) => {
+      const res = await apiRequest("POST", "/api/auth/phone/verify", data);
+      return await res.json();
+    },
+    onSuccess: (user: SelectUser) => {
+      queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Login successful",
+        description: `Welcome to ScootMe, ${user.fullName}!`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Verification failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const googleLoginMutation = useMutation({
+    mutationFn: async () => {
+      window.location.href = "/api/auth/google";
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Google login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const appleLoginMutation = useMutation({
+    mutationFn: async () => {
+      window.location.href = "/api/auth/apple";
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Apple login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <AuthContext.Provider
       value={{
@@ -117,6 +184,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        phoneLoginMutation,
+        phoneVerifyMutation,
+        googleLoginMutation,
+        appleLoginMutation,
       }}
     >
       {children}
