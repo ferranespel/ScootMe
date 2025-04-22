@@ -46,6 +46,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
   
+  // Phone authentication routes
+  app.post("/api/auth/phone/login", async (req, res) => {
+    try {
+      const validatedData = phoneLoginSchema.parse(req.body);
+      const { phoneNumber } = validatedData;
+      
+      // Generate a 6-digit verification code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Store the code with the phone number as the key
+      verificationCodes.set(phoneNumber, code);
+      
+      // In production, send SMS with the code using Twilio
+      // For now, we'll log it for testing purposes
+      console.log(`Phone verification code for ${phoneNumber}: ${code}`);
+      await sendSmsVerification(phoneNumber, code);
+      
+      res.status(200).json({ message: "Verification code sent" });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      res.status(500).json({ message: "Failed to send verification code" });
+    }
+  });
+  
+  app.post("/api/auth/phone/verify", async (req, res) => {
+    try {
+      const validatedData = phoneVerificationCodeSchema.parse(req.body);
+      const { phoneNumber, code } = validatedData;
+      
+      // Verify the code
+      const storedCode = verificationCodes.get(phoneNumber);
+      
+      if (!storedCode || storedCode !== code) {
+        return res.status(400).json({ message: "Invalid verification code" });
+      }
+      
+      // Check if user exists with this phone number
+      let user = await storage.getUserByPhone(phoneNumber);
+      
+      // If not, create a new user
+      if (!user) {
+        // Generate a username based on the phone number (removing special characters)
+        const cleanPhone = phoneNumber.replace(/\D/g, '');
+        const username = `user_${cleanPhone}`;
+        
+        // Generate a random full name for the new user (this would be collected in production)
+        const fullName = `User ${cleanPhone.substring(cleanPhone.length - 4)}`;
+        
+        user = await storage.createUser({
+          username,
+          email: `${username}@example.com`, // Placeholder email
+          phoneNumber,
+          fullName,
+          password: null, // No password for OAuth users
+          providerId: 'phone',
+          providerAccountId: phoneNumber,
+          isPhoneVerified: true
+        });
+      } else {
+        // Update existing user as verified
+        user = await storage.updateUser(user.id, { 
+          isPhoneVerified: true,
+          providerId: 'phone',
+          providerAccountId: phoneNumber
+        });
+      }
+      
+      // Remove the verification code
+      verificationCodes.delete(phoneNumber);
+      
+      // Log the user in
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Login failed after verification" });
+        }
+        res.status(200).json(user);
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      console.error("Phone verification error:", error);
+      res.status(500).json({ message: "Failed to verify phone" });
+    }
+  });
+  
   // TESTING ONLY: Endpoint to get verification code for a specific email or phone
   // WARNING: This should ONLY be used for testing and removed in production
   // This endpoint is always available since we're in development

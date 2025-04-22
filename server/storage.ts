@@ -9,6 +9,7 @@ export interface IStorage {
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByPhone(phoneNumber: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(userId: number, updates: Partial<User>): Promise<User | undefined>;
   updateUserBalance(userId: number, amount: number): Promise<User | undefined>;
@@ -215,24 +216,35 @@ export class MemStorage implements IStorage {
       (user) => user.username === username,
     );
   }
+  
+  async getUserByPhone(phoneNumber: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.phoneNumber === phoneNumber,
+    );
+  }
 
   async createUser(user: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
     const newUser: User = { 
       ...user, 
       id,
+      password: user.password || null,
       phoneNumber: user.phoneNumber || null,
       profilePicture: user.profilePicture || null,
       balance: user.balance || 0, // Ensure balance is never undefined
       createdAt: new Date(), // Add the createdAt timestamp
       
       // Add verification fields
-      isEmailVerified: false,
+      isEmailVerified: user.providerId === 'google' || user.providerId === 'apple' || false,
       emailVerificationCode: null,
       emailVerificationExpiry: null,
-      isPhoneVerified: false,
+      isPhoneVerified: user.providerId === 'phone' || false,
       phoneVerificationCode: null,
-      phoneVerificationExpiry: null
+      phoneVerificationExpiry: null,
+      
+      // OAuth related fields
+      providerId: user.providerId || null,
+      providerAccountId: user.providerAccountId || null
     };
     this.users.set(id, newUser);
     return newUser;
