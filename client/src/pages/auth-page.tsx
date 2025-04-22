@@ -16,8 +16,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { phoneLoginSchema } from "@shared/schema";
-import { Loader2, Apple, Phone } from "lucide-react";
+import { Loader2, Phone } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
+import { FaApple } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/language-selector";
 
@@ -159,7 +160,7 @@ export default function AuthPage() {
                 {appleLoginMutation.isPending ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Apple className="h-5 w-5" />
+                  <FaApple className="h-5 w-5" />
                 )}
                 <span>{t('auth.continueWithApple')}</span>
               </Button>
