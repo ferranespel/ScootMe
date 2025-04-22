@@ -83,7 +83,7 @@ export async function sendEmailVerification(email: string, code: string): Promis
 // Real SMS sending function using Twilio
 export async function sendSmsVerification(phoneNumber: string, code: string): Promise<boolean> {
   try {
-    // Store code for testing retrieval and backup
+    // Always store the code for testing retrieval and debugging
     verificationCodes.set(phoneNumber, code);
     console.log(`SMS VERIFICATION CODE for ${phoneNumber}: ${code}`);
     
@@ -93,26 +93,37 @@ export async function sendSmsVerification(phoneNumber: string, code: string): Pr
     const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
     
     if (!accountSid || !authToken || !twilioPhoneNumber) {
-      console.error('Twilio credentials are missing. Using mock implementation.');
+      console.error('Twilio credentials are missing or invalid:');
+      console.error(`TWILIO_ACCOUNT_SID: ${accountSid ? 'Set' : 'Missing'}`);
+      console.error(`TWILIO_AUTH_TOKEN: ${authToken ? 'Set' : 'Missing'}`);
+      console.error(`TWILIO_PHONE_NUMBER: ${twilioPhoneNumber ? 'Set' : 'Missing'}`);
+      console.log('Using mock implementation for testing');
       return true; // Return true for testing without credentials
     }
     
-    // Import Twilio dynamically to avoid module resolution issues
-    const twilio = require('twilio');
-    const client = twilio(accountSid, authToken);
-    
-    // Send the SMS
-    const message = await client.messages.create({
-      body: `Your EcoScoot verification code is: ${code}. This code will expire in 10 minutes.`,
-      from: twilioPhoneNumber,
-      to: phoneNumber
-    });
-    
-    console.log(`SMS sent with Twilio SID: ${message.sid}`);
-    return true;
+    try {
+      // Import Twilio dynamically to avoid module resolution issues
+      const twilio = require('twilio');
+      const client = twilio(accountSid, authToken);
+      
+      // Send the SMS
+      const message = await client.messages.create({
+        body: `Your EcoScoot verification code is: ${code}. This code will expire in 10 minutes.`,
+        from: twilioPhoneNumber,
+        to: phoneNumber
+      });
+      
+      console.log(`SMS sent with Twilio SID: ${message.sid}`);
+      return true;
+    } catch (twilioError) {
+      console.error('Error sending SMS with Twilio:', twilioError);
+      // For development, still return true to allow testing even if SMS delivery fails
+      // In production, you might want to handle this differently
+      return true;
+    }
   } catch (error) {
-    console.error('Error sending SMS with Twilio:', error);
-    // Still store the code for testing even if Twilio fails
+    console.error('Unexpected error in sendSmsVerification:', error);
+    // Still store the code for testing even if the process fails
     return true; // Don't fail the verification flow due to SMS delivery issues
   }
 }

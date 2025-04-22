@@ -55,6 +55,8 @@ export function setupAuth(app: Express) {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
         callbackURL: "/api/auth/google/callback",
         scope: ["profile", "email"],
+        // Add additional parameters to help with the redirect URI issue
+        proxy: true,
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
@@ -197,14 +199,33 @@ export function setupAuth(app: Express) {
   });
   
   // Google OAuth routes
-  app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+  app.get("/api/auth/google", (req, res, next) => {
+    console.log("Google OAuth request received. Replit hostname:", req.hostname);
+    passport.authenticate("google", { 
+      scope: ["profile", "email"],
+      // Add additional options to help debug
+      prompt: "select_account"
+    })(req, res, next);
+  });
   
   app.get(
     "/api/auth/google/callback",
-    passport.authenticate("google", { failureRedirect: "/auth" }),
+    (req, res, next) => {
+      console.log("Google OAuth callback received:", req.url);
+      passport.authenticate("google", { 
+        failureRedirect: "/auth",
+        failWithError: true
+      })(req, res, next);
+    },
     (req, res) => {
       // Successful authentication, redirect to home page
+      console.log("Google OAuth authentication successful");
       res.redirect("/");
+    },
+    (err, req, res, next) => {
+      // Error handler
+      console.error("Google OAuth error:", err);
+      res.redirect("/auth?error=google-auth-failed");
     }
   );
 }
