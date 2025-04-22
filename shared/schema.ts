@@ -67,6 +67,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   balance: true,
   providerId: true,
   providerAccountId: true,
+  isEmailVerified: true,
+  isPhoneVerified: true,
 });
 
 export const insertScooterSchema = createInsertSchema(scooters).pick({

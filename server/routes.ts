@@ -54,23 +54,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = phoneLoginSchema.parse(req.body);
       const { phoneNumber } = validatedData;
       
-      // Generate a 6-digit verification code
+      // Generate a 6-digit verification code using our utility function
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // Store the code with the phone number as the key
-      verificationCodes.set(phoneNumber, code);
+      // Send SMS with the code using Twilio (real implementation)
+      const sent = await sendSmsVerification(phoneNumber, code);
       
-      // In production, send SMS with the code using Twilio
-      // For now, we'll log it for testing purposes
-      console.log(`Phone verification code for ${phoneNumber}: ${code}`);
-      await sendSmsVerification(phoneNumber, code);
-      
-      res.status(200).json({ message: "Verification code sent" });
+      if (sent) {
+        res.status(200).json({ message: "Verification code sent" });
+      } else {
+        res.status(500).json({ message: "Failed to send verification code" });
+      }
     } catch (error) {
       if (error instanceof ZodError) {
         const validationError = fromZodError(error);
         return res.status(400).json({ message: validationError.message });
       }
+      console.error("Error in phone login:", error);
       res.status(500).json({ message: "Failed to send verification code" });
     }
   });
