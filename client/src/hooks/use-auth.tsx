@@ -25,7 +25,6 @@ type AuthContextType = {
   phoneLoginMutation: UseMutationResult<void, Error, PhoneLoginData>;
   phoneVerifyMutation: UseMutationResult<SelectUser, Error, PhoneVerifyData>;
   googleLoginMutation: UseMutationResult<void, Error, void>;
-  appleLoginMutation: UseMutationResult<void, Error, void>;
 };
 
 type LoginData = z.infer<typeof loginSchema>;
@@ -162,18 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const appleLoginMutation = useMutation({
-    mutationFn: async () => {
-      window.location.href = "/api/auth/apple";
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Apple login failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+
 
   return (
     <AuthContext.Provider
@@ -187,7 +175,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phoneLoginMutation,
         phoneVerifyMutation,
         googleLoginMutation,
-        appleLoginMutation,
       }}
     >
       {children}

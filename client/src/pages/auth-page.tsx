@@ -18,7 +18,6 @@ import { Label } from "@/components/ui/label";
 import { phoneLoginSchema } from "@shared/schema";
 import { Loader2, Phone } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
-import { FaApple } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/language-selector";
 
@@ -29,8 +28,7 @@ export default function AuthPage() {
     isLoading, 
     phoneLoginMutation, 
     phoneVerifyMutation, 
-    googleLoginMutation, 
-    appleLoginMutation 
+    googleLoginMutation
   } = useAuth();
   const [, navigate] = useLocation();
   const [phoneStep, setPhoneStep] = useState<"phoneEntry" | "codeVerification">("phoneEntry");
@@ -70,11 +68,6 @@ export default function AuthPage() {
   // Handle Google login
   const handleGoogleLogin = () => {
     googleLoginMutation.mutate();
-  };
-
-  // Handle Apple login
-  const handleAppleLogin = () => {
-    appleLoginMutation.mutate();
   };
 
   // Redirect if already logged in
@@ -149,20 +142,6 @@ export default function AuthPage() {
                   <FcGoogle className="h-5 w-5" />
                 )}
                 <span>{t('auth.continueWithGoogle')}</span>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="flex items-center justify-center gap-2 h-12"
-                onClick={handleAppleLogin}
-                disabled={appleLoginMutation.isPending}
-              >
-                {appleLoginMutation.isPending ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <FaApple className="h-5 w-5" />
-                )}
-                <span>{t('auth.continueWithApple')}</span>
               </Button>
             </div>
             
