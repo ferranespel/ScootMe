@@ -2,6 +2,8 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { 
   insertScooterSchema, insertRideSchema, updateRideSchema, 
   insertPaymentSchema, updateUserSchema, changePasswordSchema,
