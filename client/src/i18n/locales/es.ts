@@ -81,6 +81,8 @@ const translation = {
     smsRatesApply: "Se aplicarán tarifas estándar de SMS",
     codeSentTo: "Código enviado a",
     codeExpiry: "El código expira en 10 minutos",
+    domainNotAuthorized: "Este dominio no está autorizado para la autenticación de Google:",
+    addDomainInstructions: "Agregue este dominio a la lista de dominios autorizados de Firebase en la consola de Firebase.",
   },
 
   // Profile and user settings

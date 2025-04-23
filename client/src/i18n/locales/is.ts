@@ -81,6 +81,8 @@ const translation = {
     smsRatesApply: "Venjuleg SMS-gjöld kunna að eiga við",
     codeSentTo: "Kóði sendur á",
     codeExpiry: "Kóði rennur út eftir 10 mínútur",
+    domainNotAuthorized: "Þetta lén er ekki heimilt fyrir Google auðkenningu:",
+    addDomainInstructions: "Vinsamlegast bættu þessu léni við lista yfir heimil lén í Firebase stjórnborðinu.",
   },
 
   // Profile and user settings
