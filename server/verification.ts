@@ -104,8 +104,9 @@ export async function sendSmsVerification(phoneNumber: string, code: string): Pr
     }
     
     try {
-      // Import Twilio dynamically to avoid module resolution issues
-      const twilio = require('twilio');
+      // Import Twilio properly using dynamic import
+      const twilioModule = await import('twilio');
+      const twilio = twilioModule.default;
       console.log('Twilio module imported successfully');
       
       console.log(`Creating Twilio client with SID: ${accountSid.substring(0, 5)}... and phone: ${twilioPhoneNumber}`);
@@ -122,19 +123,24 @@ export async function sendSmsVerification(phoneNumber: string, code: string): Pr
       
       console.log(`SMS sent successfully with Twilio SID: ${message.sid}`);
       return true;
-    } catch (twilioError) {
+    } catch (error) {
+      const twilioError = error as any;
       console.error('Error sending SMS with Twilio:', twilioError);
-      if (twilioError.code) {
-        console.error(`Twilio Error Code: ${twilioError.code}`);
-      }
-      if (twilioError.message) {
-        console.error(`Twilio Error Message: ${twilioError.message}`);
-      }
-      if (twilioError.status) {
-        console.error(`Twilio Error Status: ${twilioError.status}`);
-      }
-      if (twilioError.moreInfo) {
-        console.error(`Twilio Error Info: ${twilioError.moreInfo}`);
+      
+      // Log detailed error information if available
+      if (twilioError && typeof twilioError === 'object') {
+        if ('code' in twilioError) {
+          console.error(`Twilio Error Code: ${twilioError.code}`);
+        }
+        if ('message' in twilioError) {
+          console.error(`Twilio Error Message: ${twilioError.message}`);
+        }
+        if ('status' in twilioError) {
+          console.error(`Twilio Error Status: ${twilioError.status}`);
+        }
+        if ('moreInfo' in twilioError) {
+          console.error(`Twilio Error Info: ${twilioError.moreInfo}`);
+        }
       }
       
       // For development, still return true to allow testing even if SMS delivery fails

@@ -52,12 +52,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/phone/login", async (req, res) => {
     try {
       const validatedData = phoneLoginSchema.parse(req.body);
-      const { phoneNumber } = validatedData;
+      let { phoneNumber } = validatedData;
       
-      // Generate a 6-digit verification code using our utility function
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      // Format the phone number for Twilio (E.164 format)
+      phoneNumber = phoneNumber.trim();
       
-      // Send SMS with the code using Twilio (real implementation)
+      // Convert to E.164 format
+      // Remove any non-digits except the + sign
+      phoneNumber = phoneNumber.replace(/[^\d+]/g, '');
+      
+      // If it doesn't start with +, assume it needs formatting
+      if (!phoneNumber.startsWith('+')) {
+        // If it starts with 00 (international prefix), replace with +
+        if (phoneNumber.startsWith('00')) {
+          phoneNumber = '+' + phoneNumber.substring(2);
+        } 
+        // If it starts with 354 (Iceland country code without +), add +
+        else if (phoneNumber.startsWith('354')) {
+          phoneNumber = '+' + phoneNumber;
+        }
+        // Otherwise assume it's an Iceland number missing the country code
+        else {
+          phoneNumber = '+354' + phoneNumber;
+        }
+      }
+      
+      console.log(`Formatted phone number for verification: ${phoneNumber}`);
+      
+      // Generate a 6-digit verification code
+      const code = generateVerificationCode();
+      const expiry = getVerificationExpiry();
+      
+      // Store the code for this phone number
+      verificationCodes.set(phoneNumber, code);
+      
+      // Send SMS with the code using Twilio
+      console.log(`Sending verification code ${code} to ${phoneNumber}`);
       const sent = await sendSmsVerification(phoneNumber, code);
       
       if (sent) {
