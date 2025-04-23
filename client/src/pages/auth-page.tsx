@@ -133,19 +133,15 @@ export default function AuthPage() {
             <div className="grid gap-4">
               <Button 
                 variant="outline" 
-                className="flex items-center justify-center gap-2 h-12"
-                onClick={handleGoogleLogin}
-                disabled={googleLoginMutation.isPending}
+                className="flex items-center justify-center gap-2 h-12 opacity-50"
+                disabled={true}
+                title="Google Sign-In requires additional configuration"
               >
-                {googleLoginMutation.isPending ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <FcGoogle className="h-5 w-5" />
-                )}
+                <FcGoogle className="h-5 w-5" />
                 <span>{t('auth.continueWithGoogle')}</span>
               </Button>
-              <p className="text-xs text-amber-600 text-center mt-1">
-                Note: Firebase Google Sign-In requires domain configuration. Please use phone sign-in instead (error: unauthorized-domain).
+              <p className="text-xs text-gray-500 text-center mt-1">
+                Google Sign-In not available in development environment
               </p>
             </div>
             
@@ -161,21 +157,28 @@ export default function AuthPage() {
             {/* Phone Authentication */}
             {phoneStep === "phoneEntry" ? (
               <form onSubmit={phoneForm.handleSubmit(onPhoneLoginSubmit)} className="space-y-4">
-                <Controller
-                  name="phoneNumber"
-                  control={phoneForm.control}
-                  render={({ field, fieldState }) => (
-                    <PhoneInput
-                      value={field.value}
-                      onChange={field.onChange}
-                      error={fieldState.error?.message}
-                    />
-                  )}
-                />
+                <div className="text-center mb-2">
+                  <h3 className="text-lg font-medium">{t('auth.phoneLoginTitle') || 'Login with your phone'}</h3>
+                  <p className="text-sm text-gray-500">{t('auth.phoneLoginDescription') || 'We\'ll send a verification code to your phone'}</p>
+                </div>
+                
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <Controller
+                    name="phoneNumber"
+                    control={phoneForm.control}
+                    render={({ field, fieldState }) => (
+                      <PhoneInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        error={fieldState.error?.message}
+                      />
+                    )}
+                  />
+                </div>
                 
                 <Button 
                   type="submit" 
-                  className="w-full h-12 flex items-center gap-2" 
+                  className="w-full h-12 flex items-center gap-2 mt-2" 
                   disabled={phoneLoginMutation.isPending}
                 >
                   {phoneLoginMutation.isPending ? (
@@ -190,18 +193,37 @@ export default function AuthPage() {
                     </>
                   )}
                 </Button>
+                
+                <p className="text-xs text-center text-gray-500">
+                  {t('auth.smsRatesApply') || 'Standard SMS rates may apply'}
+                </p>
               </form>
             ) : (
               <form onSubmit={verificationForm.handleSubmit(onVerificationSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="verification-code">{t('auth.verificationCode')}</Label>
-                  <Input
-                    id="verification-code"
-                    type="text"
-                    placeholder="123456"
-                    maxLength={6}
-                    {...verificationForm.register("code")}
-                  />
+                <div className="text-center mb-4">
+                  <h3 className="text-lg font-medium">{t('auth.enterVerificationCode') || 'Enter verification code'}</h3>
+                  <p className="text-sm text-gray-500">
+                    {t('auth.codeSentTo') || 'Code sent to'} <span className="font-medium">{phoneNumber}</span>
+                  </p>
+                </div>
+                
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="space-y-2">
+                    <Label htmlFor="verification-code" className="text-center block">
+                      {t('auth.verificationCode') || 'Verification code'}
+                    </Label>
+                    <Input
+                      id="verification-code"
+                      type="text"
+                      placeholder="123456"
+                      maxLength={6}
+                      className="text-center text-lg font-mono tracking-widest"
+                      {...verificationForm.register("code")}
+                    />
+                    <p className="text-xs text-center text-gray-500">
+                      {t('auth.codeExpiry') || 'Code expires in 10 minutes'}
+                    </p>
+                  </div>
                 </div>
                 
                 <Button 
@@ -212,21 +234,43 @@ export default function AuthPage() {
                   {phoneVerifyMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      {t('auth.verifying')}
+                      <span>{t('auth.verifying') || 'Verifying...'}</span>
                     </>
                   ) : (
-                    t('auth.verify')
+                    t('auth.verify') || 'Verify'
                   )}
                 </Button>
                 
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  className="w-full" 
-                  onClick={() => setPhoneStep("phoneEntry")}
-                >
-                  {t('auth.backToPhoneEntry')}
-                </Button>
+                <div className="flex flex-col gap-2 items-center">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    className="w-full" 
+                    onClick={() => setPhoneStep("phoneEntry")}
+                  >
+                    {t('auth.backToPhoneEntry') || 'Use a different phone number'}
+                  </Button>
+                  
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="text-primary"
+                    onClick={() => {
+                      // Resend code functionality
+                      if (phoneNumber) {
+                        phoneLoginMutation.mutate({ phoneNumber });
+                      }
+                    }}
+                    disabled={phoneLoginMutation.isPending}
+                  >
+                    {phoneLoginMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : null}
+                    {t('auth.resendCode') || 'Resend code'}
+                  </Button>
+                </div>
               </form>
             )}
           </CardContent>
