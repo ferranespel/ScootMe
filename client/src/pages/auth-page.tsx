@@ -69,15 +69,78 @@ export default function AuthPage() {
   // State to track Google auth error message
   const [googleAuthError, setGoogleAuthError] = useState<string | null>(null);
   
+  // Effect to check domain and alert if necessary on initial load
+  useEffect(() => {
+    const domain = window.location.hostname;
+    
+    // Check if we've already notified about this domain
+    const hasNotifiedAboutDomain = localStorage.getItem('firebase_domain_notification');
+    
+    if (!hasNotifiedAboutDomain && domain.includes('replit')) {
+      // Set a flag to avoid showing this again
+      localStorage.setItem('firebase_domain_notification', 'true');
+      
+      // Show a notification about domain authorization
+      const notification = `Important: This application uses Google authentication which requires domain authorization.
+
+Your current domain is: ${domain}
+
+If you experience authentication issues, please add this domain to Firebase authorized domains list in the Firebase console.`;
+      
+      // Display notification
+      setTimeout(() => {
+        alert(notification);
+      }, 1000);
+    }
+  }, []);
+  
   // Handle Google login
   const handleGoogleLogin = () => {
     setGoogleAuthError(null); // Clear any previous errors
+    
+    // Check for Firebase API key and Auth Domain
+    if (!import.meta.env.VITE_FIREBASE_API_KEY || !import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) {
+      console.error("Missing Firebase environment variables");
+      setGoogleAuthError("Firebase configuration is missing. Please check environment variables.");
+      return;
+    }
+    
+    // Pre-check for domain authorization issues
+    const domain = window.location.hostname;
+    const knownAuthorizedDomains = [
+      "localhost",
+      "127.0.0.1",
+      "scootme-22a67.firebaseapp.com",
+      "replit.app", 
+      "replit.dev"
+    ];
+    
+    // Check if current domain is likely authorized
+    const isDomainLikelyAuthorized = knownAuthorizedDomains.some(authDomain => 
+      domain === authDomain || domain.endsWith('.' + authDomain)
+    );
+    
+    if (!isDomainLikelyAuthorized) {
+      console.warn("Domain likely not authorized in Firebase:", domain);
+      // We'll still try the authentication, but warn the user first
+      const proceedAnyway = window.confirm(
+        `Warning: Your current domain (${domain}) might not be authorized in Firebase.\n\n` +
+        `This will likely result in an authentication error.\n\n` +
+        `Do you want to proceed anyway?\n\n` +
+        `(Click "Cancel" to use phone authentication instead)`
+      );
+      
+      if (!proceedAnyway) {
+        return;
+      }
+    }
+    
+    // Proceed with Google login
     googleLoginMutation.mutate(undefined, {
       onError: (error) => {
         console.error("Google login error:", error);
         if (error.message.includes("unauthorized-domain") || error.message.includes("domain is not authorized")) {
           // Provide specific error message and instructions for domain authorization
-          const domain = window.location.hostname;
           setGoogleAuthError(
             `${t('auth.domainNotAuthorized')} ${domain}\n${t('auth.addDomainInstructions')}`
           );
@@ -167,14 +230,29 @@ export default function AuthPage() {
                 <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm mt-2">
                   <h4 className="font-semibold mb-1">Google Authentication Error</h4>
                   <p className="whitespace-pre-line">{googleAuthError}</p>
-                  <div className="mt-2 p-2 bg-background/40 rounded text-xs border border-destructive/20">
-                    <strong>Firebase Domain Setup:</strong>
-                    <ol className="list-decimal ml-4 mt-1 space-y-1">
+                  
+                  <div className="mt-3 p-3 bg-background/40 rounded text-xs border border-destructive/20">
+                    <strong className="block text-sm mb-2">Firebase Domain Setup Required:</strong>
+                    <p className="mb-2">This Replit domain must be added to Firebase authorized domains list:</p>
+                    
+                    <div className="bg-background p-2 rounded font-mono text-xs mb-3 overflow-x-auto">
+                      {window.location.hostname}
+                    </div>
+                    
+                    <ol className="list-decimal ml-4 space-y-1 mb-3">
                       <li>Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Firebase Console</a></li>
                       <li>Select project: <strong>scootme-22a67</strong></li>
                       <li>Go to Authentication → Settings → Authorized domains</li>
-                      <li>Add <code className="bg-background p-1 rounded text-xs">{window.location.hostname}</code></li>
+                      <li>Add the domain shown above exactly as written</li>
+                      <li>Save changes and refresh this page</li>
                     </ol>
+                    
+                    <div className="flex items-center gap-2 mt-3 pt-2 border-t border-destructive/20">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>Note: Until domain is authorized, please use phone authentication.</span>
+                    </div>
                   </div>
                 </div>
               )}
