@@ -113,10 +113,10 @@ export function MainLayout({ children, showBottomNav = true }: MainLayoutProps) 
               const isActive = location === item.path;
               return (
                 <Link href={item.path} key={item.path}>
-                  <a className={`flex flex-col items-center justify-center ${isActive ? 'text-primary' : 'text-gray-500'}`}>
+                  <div className={`flex flex-col items-center justify-center ${isActive ? 'text-primary' : 'text-gray-500'}`}>
                     <Icon className="text-lg" size={20} />
                     <span className="text-xs mt-1">{item.label}</span>
-                  </a>
+                  </div>
                 </Link>
               );
             })}
