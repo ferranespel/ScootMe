@@ -2,35 +2,22 @@ import { Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { storage } from './storage';
 
-// Initialize Google OAuth client with dynamic redirect URI based on environment
+// Google OAuth uses a fixed redirect URI approach 
+// Since Google requires pre-registered redirect URIs, we use a fixed one.
+// Then, we pass the original host as state parameter and use a proxy redirect approach
+
+// IMPORTANT: The following URL must be registered in the Google Cloud Console
+const FIXED_GOOGLE_REDIRECT_URI = 'https://scootme--ferransson.repl.co/api/auth/google/callback';
+
+// Function to get redirect URI - ALWAYS returns the fixed URI
 const getRedirectUri = (req?: Request) => {
-  // For Replit environments with dynamic domains
+  // Show what URL we're actually using for debugging 
   if (req && req.headers.host) {
-    // If we have a request, use its host directly
-    return `https://${req.headers.host}/api/auth/google/callback`;
+    console.log(`Original host: ${req.headers.host} - using fixed redirect URI instead`);
   }
   
-  // Fallback options in order of preference
-  const envOptions = [
-    // 1. Explicit GOOGLE_REDIRECT_URI environment variable
-    process.env.GOOGLE_REDIRECT_URI,
-    
-    // 2. Based on Replit environment variables
-    process.env.REPL_SLUG && process.env.REPL_OWNER 
-      ? `https://${process.env.REPL_SLUG}--${process.env.REPL_OWNER}.repl.co/api/auth/google/callback` 
-      : null,
-    
-    // 3. Fallback for production
-    process.env.NODE_ENV === 'production' 
-      ? 'https://scootme--ferransson.repl.co/api/auth/google/callback'
-      : null
-  ];
-  
-  // Return the first non-null option
-  const redirectUri = envOptions.find(uri => uri !== null && uri !== undefined);
-  
-  // Final fallback
-  return redirectUri || 'https://scootme--ferransson.repl.co/api/auth/google/callback';
+  // Always return our fixed redirect URI that's registered in Google Cloud Console
+  return FIXED_GOOGLE_REDIRECT_URI;
 };
 
 // Initial redirect URI for startup logging
@@ -102,8 +89,8 @@ export async function handleGoogleCallback(req: Request, res: Response) {
       }
     });
     
-    // Create a fresh OAuth client with the appropriate redirect URI for this request
-    const oauth2Client = createOAuthClient(req);
+    // Create a fresh OAuth client with the FIXED redirect URI
+    const oauth2Client = createOAuthClient();
     
     const { code, error, state } = req.query;
     
@@ -118,11 +105,15 @@ export async function handleGoogleCallback(req: Request, res: Response) {
       return res.redirect('/auth?error=no_code_provided');
     }
     
-    // Optional state verification
+    // Get original domain from state parameter - this is where user should be redirected after auth
+    let redirectDomain = 'scootme--ferransson.repl.co'; // Default domain
+    
     if (state && typeof state === 'string') {
       console.log('State parameter returned:', state);
-      if (state !== req.headers.host && state !== 'default') {
-        console.warn('State mismatch in callback. Expected:', req.headers.host, 'Got:', state);
+      // Only use the state as redirect domain if it looks like a valid domain
+      if (state.includes('.') && !state.includes('/') && !state.includes('?')) {
+        redirectDomain = state;
+        console.log('Using state as redirect domain:', redirectDomain);
       }
     }
     
@@ -134,7 +125,7 @@ export async function handleGoogleCallback(req: Request, res: Response) {
       oauth2Client.setCredentials(tokens);
     } catch (tokenError) {
       console.error('Failed to get tokens:', tokenError);
-      return res.redirect('/auth?error=token_exchange_failed');
+      return res.redirect(`https://${redirectDomain}/auth?error=token_exchange_failed`);
     }
     
     // Get user info with the access token
@@ -146,7 +137,7 @@ export async function handleGoogleCallback(req: Request, res: Response) {
       });
     } catch (userInfoError) {
       console.error('Failed to get user info:', userInfoError);
-      return res.redirect('/auth?error=userinfo_failed');
+      return res.redirect(`https://${redirectDomain}/auth?error=userinfo_failed`);
     }
     
     const userInfo = userInfoResponse.data as any;
@@ -158,7 +149,7 @@ export async function handleGoogleCallback(req: Request, res: Response) {
     
     if (!userInfo.email) {
       console.error('No email provided by Google');
-      return res.redirect('/auth?error=no_email_provided');
+      return res.redirect(`https://${redirectDomain}/auth?error=no_email_provided`);
     }
     
     // Check if user already exists
@@ -182,7 +173,7 @@ export async function handleGoogleCallback(req: Request, res: Response) {
         });
       } catch (createUserError) {
         console.error('Failed to create user:', createUserError);
-        return res.redirect('/auth?error=user_creation_failed');
+        return res.redirect(`https://${redirectDomain}/auth?error=user_creation_failed`);
       }
     }
     
@@ -191,15 +182,29 @@ export async function handleGoogleCallback(req: Request, res: Response) {
     req.login(user, (err) => {
       if (err) {
         console.error('Login error', err);
-        return res.redirect('/auth?error=login_failed');
+        return res.redirect(`https://${redirectDomain}/auth?error=login_failed`);
       }
       
       // Redirect to home page after successful login
-      return res.redirect('/');
+      // If we're already on the same domain, use a relative URL
+      if (req.headers.host === redirectDomain) {
+        return res.redirect('/');
+      } else {
+        // Otherwise use absolute URL to redirect to the original domain
+        return res.redirect(`https://${redirectDomain}/`);
+      }
     });
   } catch (error) {
     console.error('Google auth error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return res.redirect('/auth?error=' + encodeURIComponent(errorMessage));
+    
+    // Determine where to redirect based on the state parameter
+    let redirectUrl = '/auth?error=' + encodeURIComponent(errorMessage);
+    if (req.query.state && typeof req.query.state === 'string' && 
+        req.query.state.includes('.') && !req.query.state.includes('/')) {
+      redirectUrl = `https://${req.query.state}${redirectUrl}`;
+    }
+    
+    return res.redirect(redirectUrl);
   }
 }

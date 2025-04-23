@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
@@ -8,7 +8,7 @@ import {
   insertScooterSchema, insertRideSchema, updateRideSchema, 
   insertPaymentSchema, updateUserSchema, changePasswordSchema,
   verifyEmailSchema, verifyPhoneSchema, requestVerificationSchema,
-  phoneLoginSchema, phoneVerificationCodeSchema
+  phoneLoginSchema, phoneVerificationCodeSchema, User
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -28,8 +28,9 @@ import {
 } from "./verification";
 
 // Helper to check if user is authenticated
-function isAuthenticated(req: Request, res: Response, next: Function) {
-  if (req.isAuthenticated()) {
+function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated() && req.user) {
+    // User is authenticated and req.user exists
     return next();
   }
   res.status(401).json({ message: "Authentication required" });
@@ -38,12 +39,8 @@ function isAuthenticated(req: Request, res: Response, next: Function) {
 // TypeScript interface augmentation to make req.user accessible with correct typing
 declare global {
   namespace Express {
-    interface Request {
-      user?: {
-        id: number;
-        [key: string]: any;
-      }
-    }
+    // This properly types req.user as our User type from the schema
+    interface User extends User {}
   }
 }
 
