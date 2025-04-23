@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { SelectUser } from "@shared/schema";
+import { User } from "@shared/schema";
 
 export function useGoogleAuth() {
   const { toast } = useToast();

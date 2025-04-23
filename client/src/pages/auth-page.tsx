@@ -21,6 +21,7 @@ import { FcGoogle } from "react-icons/fc";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/language-selector";
 import { PhoneInput } from "@/components/phone-input";
+import { useGoogleAuth, useGoogleAuthCallback } from "@/hooks/use-google-auth";
 
 export default function AuthPage() {
   const { t } = useTranslation();
@@ -69,7 +70,20 @@ export default function AuthPage() {
   // State to track Google auth error message
   const [googleAuthError, setGoogleAuthError] = useState<string | null>(null);
   
-  // Effect to check domain and alert if necessary on initial load
+  // Direct Google Auth hooks
+  const { 
+    startGoogleAuth: startDirectGoogleAuth, 
+    isLoading: directGoogleAuthLoading,
+    error: directGoogleAuthError 
+  } = useGoogleAuth();
+  
+  const { 
+    status: googleAuthCallbackStatus, 
+    message: googleAuthCallbackMessage,
+    checkAuthReturn 
+  } = useGoogleAuthCallback();
+  
+  // Effect to check for OAuth return and domain validity on initial load
   useEffect(() => {
     const domain = window.location.hostname;
     
@@ -151,6 +165,20 @@ If you experience authentication issues, please add this domain to Firebase auth
     });
   };
 
+  // Check for direct Google auth return
+  useEffect(() => {
+    // Check if we've just returned from Google OAuth
+    checkAuthReturn();
+    
+    // Display success/error messages from direct Google auth
+    if (googleAuthCallbackStatus === "success") {
+      // Success notification could be displayed here if needed
+      console.log("Direct Google auth successful:", googleAuthCallbackMessage);
+    } else if (googleAuthCallbackStatus === "error" && googleAuthCallbackMessage) {
+      setGoogleAuthError(googleAuthCallbackMessage);
+    }
+  }, [checkAuthReturn, googleAuthCallbackStatus, googleAuthCallbackMessage]);
+  
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
@@ -211,6 +239,7 @@ If you experience authentication issues, please add this domain to Firebase auth
           <CardContent className="space-y-6">
             {/* Social Login Buttons */}
             <div className="grid gap-4">
+              {/* Firebase Google Auth (has domain restrictions) */}
               <Button 
                 variant="outline" 
                 className="flex items-center justify-center gap-2 h-12"
@@ -222,7 +251,22 @@ If you experience authentication issues, please add this domain to Firebase auth
                 ) : (
                   <FcGoogle className="h-5 w-5" />
                 )}
-                <span>{t('auth.continueWithGoogle')}</span>
+                <span>{t('auth.continueWithGoogle')} (Firebase)</span>
+              </Button>
+              
+              {/* Direct Google OAuth option (alternative) */}
+              <Button 
+                variant="outline" 
+                className="flex items-center justify-center gap-2 h-12 border-primary/20 hover:bg-primary/5"
+                onClick={startDirectGoogleAuth}
+                disabled={directGoogleAuthLoading}
+              >
+                {directGoogleAuthLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <FcGoogle className="h-5 w-5" />
+                )}
+                <span>{t('auth.continueWithGoogle')} (Direct)</span>
               </Button>
               
               {/* Google auth error message */}
@@ -231,28 +275,47 @@ If you experience authentication issues, please add this domain to Firebase auth
                   <h4 className="font-semibold mb-1">Google Authentication Error</h4>
                   <p className="whitespace-pre-line">{googleAuthError}</p>
                   
-                  <div className="mt-3 p-3 bg-background/40 rounded text-xs border border-destructive/20">
-                    <strong className="block text-sm mb-2">Firebase Domain Setup Required:</strong>
-                    <p className="mb-2">This Replit domain must be added to Firebase authorized domains list:</p>
-                    
-                    <div className="bg-background p-2 rounded font-mono text-xs mb-3 overflow-x-auto">
-                      {window.location.hostname}
+                  {googleAuthError.includes("domain") || googleAuthError.includes("unauthorized") ? (
+                    <div className="mt-3 p-3 bg-background/40 rounded text-xs border border-destructive/20">
+                      <strong className="block text-sm mb-2">Firebase Domain Setup Required:</strong>
+                      <p className="mb-2">This Replit domain must be added to Firebase authorized domains list:</p>
+                      
+                      <div className="bg-background p-2 rounded font-mono text-xs mb-3 overflow-x-auto">
+                        {window.location.hostname}
+                      </div>
+                      
+                      <ol className="list-decimal ml-4 space-y-1 mb-3">
+                        <li>Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Firebase Console</a></li>
+                        <li>Select project: <strong>scootme-22a67</strong></li>
+                        <li>Go to Authentication → Settings → Authorized domains</li>
+                        <li>Add the domain shown above exactly as written</li>
+                        <li>Save changes and refresh this page</li>
+                      </ol>
+                      
+                      <div className="flex items-center justify-between mt-3 pt-2 border-t border-destructive/20">
+                        <div className="flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>Try the Direct Google option above or use phone authentication.</span>
+                        </div>
+                      </div>
                     </div>
-                    
-                    <ol className="list-decimal ml-4 space-y-1 mb-3">
-                      <li>Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Firebase Console</a></li>
-                      <li>Select project: <strong>scootme-22a67</strong></li>
-                      <li>Go to Authentication → Settings → Authorized domains</li>
-                      <li>Add the domain shown above exactly as written</li>
-                      <li>Save changes and refresh this page</li>
-                    </ol>
-                    
-                    <div className="flex items-center gap-2 mt-3 pt-2 border-t border-destructive/20">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>Note: Until domain is authorized, please use phone authentication.</span>
+                  ) : (
+                    <div className="mt-3 p-3 bg-background/40 rounded text-xs">
+                      <p>Please try again or use another authentication method.</p>
                     </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Direct Google auth error */}
+              {directGoogleAuthError && !googleAuthError && (
+                <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm mt-2">
+                  <h4 className="font-semibold mb-1">Direct Google Authentication Error</h4>
+                  <p>{directGoogleAuthError}</p>
+                  <div className="mt-2 text-xs">
+                    Please try again or use another authentication method.
                   </div>
                 </div>
               )}

@@ -51,6 +51,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
   
+  // Direct Google OAuth routes
+  app.get("/api/auth/google/url", (req, res) => {
+    try {
+      console.log("Generating Google OAuth URL...");
+      const url = getGoogleAuthUrl();
+      console.log("Generated URL:", url.substring(0, 50) + "..." + "(truncated)");
+      res.json({ url });
+    } catch (error) {
+      console.error("Error generating Google auth URL:", error);
+      res.status(500).json({ message: "Failed to generate Google authentication URL" });
+    }
+  });
+  
+  // Google OAuth callback handler
+  app.get("/api/auth/google/callback", handleGoogleCallback);
+  
   // Phone authentication routes
   app.post("/api/auth/phone/login", async (req, res) => {
     try {

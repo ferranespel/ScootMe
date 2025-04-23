@@ -3,9 +3,10 @@ import { OAuth2Client } from 'google-auth-library';
 import { storage } from './storage';
 
 // Initialize Google OAuth client
+// Use environment variables for production or development URLs
 const redirectUri = process.env.NODE_ENV === 'production' 
-  ? process.env.PRODUCTION_URL + '/api/auth/google/callback'
-  : 'https://' + process.env.REPL_SLUG + '.' + process.env.REPL_OWNER + '.repl.co/api/auth/google/callback';
+  ? `${process.env.PRODUCTION_URL}/api/auth/google/callback`
+  : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/google/callback`;
 
 // Create OAuth client
 const oauth2Client = new OAuth2Client(
@@ -14,22 +15,28 @@ const oauth2Client = new OAuth2Client(
   redirectUri
 );
 
-// Generate auth URL for frontend to redirect to
+/**
+ * Generate Google OAuth URL for redirection
+ */
 export function getGoogleAuthUrl() {
   const scopes = [
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/userinfo.email',
   ];
 
-  return oauth2Client.generateAuthUrl({
+  const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: scopes,
     include_granted_scopes: true,
-    prompt: 'consent', // Force consent screen to ensure we get refresh token
+    prompt: 'consent'  // Force consent screen to ensure refresh token
   });
+
+  return url;
 }
 
-// Handle OAuth callback
+/**
+ * Handle OAuth callback
+ */
 export async function handleGoogleCallback(req: Request, res: Response) {
   try {
     console.log('Handling Google callback');
@@ -51,7 +58,7 @@ export async function handleGoogleCallback(req: Request, res: Response) {
       url: 'https://www.googleapis.com/oauth2/v3/userinfo',
     });
     
-    const userInfo = userInfoResponse.data;
+    const userInfo = userInfoResponse.data as any;
     console.log('User info retrieved:', {
       id: userInfo.sub,
       email: userInfo.email,
