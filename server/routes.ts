@@ -748,12 +748,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add Firebase authentication route
   app.post("/api/auth/firebase/google", async (req, res) => {
     try {
+      console.log("Firebase Google auth endpoint called with body:", {
+        ...req.body,
+        token: req.body.token ? "PRESENT" : "MISSING" // Don't log the token
+      });
+      
       const { uid, email, displayName, photoURL } = req.body;
       
       if (!email) {
+        console.error("Firebase auth failed: Email is required but was missing");
         return res.status(400).json({ message: "Email is required" });
       }
       
+      console.log(`Looking up user with Firebase ID: ${uid}`);
       // Check if user already exists with this Google ID
       let user = await storage.getUserByProviderId("firebase", uid);
       
@@ -774,13 +781,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Log the user in
+      console.log("Attempting to login user:", { 
+        userId: user.id, 
+        username: user.username, 
+        email: user.email 
+      });
+      
       req.login(user, (err) => {
         if (err) {
+          console.error("Login failed in req.login:", err);
           return res.status(500).json({ message: "Login failed", error: err.message });
         }
         
         // Return user without password
         const { password, ...userWithoutPassword } = user;
+        console.log("Firebase authentication successful, returning user data");
         return res.status(200).json(userWithoutPassword);
       });
     } catch (error: any) {

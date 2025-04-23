@@ -3,9 +3,12 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRe
 import { apiRequest } from "./queryClient";
 
 // Firebase configuration
+// IMPORTANT: We explicitly use the firebase auth domain as authDomain
+// instead of the current domain to avoid auth issues
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  // Always use the Firebase domain for authDomain to avoid issues with Replit domains
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
@@ -38,9 +41,15 @@ try {
   googleProvider.addScope('https://www.googleapis.com/auth/userinfo.email');
   googleProvider.addScope('https://www.googleapis.com/auth/userinfo.profile');
   
-  // Force account selection each time
+  // Force account selection each time and add debug parameters
   googleProvider.setCustomParameters({
-    prompt: 'select_account'
+    prompt: 'select_account',
+    // Add login_hint if we have a saved email to speed up the process
+    login_hint: localStorage.getItem('last_login_email') || undefined,
+    // Include current origin and hostname for debugging
+    state: `${window.location.origin}|${window.location.hostname}`,
+    // Allow redirect to firebase domain first (for auth) then back to our site
+    redirect_uri: window.location.origin + '/auth'
   });
   
   console.log("Firebase initialized successfully");
@@ -138,10 +147,10 @@ export async function signInWithGoogle() {
   try {
     console.log("Starting Google sign-in with Firebase...");
     
-    // TEMPORARY FIX: Force mobile flow for all devices for testing
+    // IMPORTANT: Use redirect method for ALL devices until we resolve the domain authorization issues
     const forceMobileFlow = true; 
     
-    // Detect if running on mobile
+    // Detect if running on mobile (but we're forcing redirect for all devices right now)
     const isMobile = forceMobileFlow || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     // Print mobile detection details
@@ -162,7 +171,9 @@ export async function signInWithGoogle() {
         // Set up custom parameters to help with debugging
         googleProvider.setCustomParameters({
           prompt: 'select_account',
-          state: window.location.hostname // Pass hostname as state for debugging
+          state: window.location.hostname, // Pass hostname as state for debugging
+          // Make sure we redirect back to our site's auth page
+          redirect_uri: window.location.origin + '/auth'
         });
         
         console.log("Starting redirect with provider:", googleProvider);
@@ -213,7 +224,9 @@ export async function signInWithGoogle() {
         // Set up custom parameters to help with debugging
         googleProvider.setCustomParameters({
           prompt: 'select_account',
-          state: `fallback-${window.location.hostname}` // Pass hostname as state for debugging
+          state: `fallback-${window.location.hostname}`, // Pass hostname as state for debugging
+          // Make sure we redirect back to our site's auth page
+          redirect_uri: window.location.origin + '/auth'
         });
         
         await signInWithRedirect(auth, googleProvider);
