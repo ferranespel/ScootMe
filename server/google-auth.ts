@@ -2,10 +2,12 @@ import { Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { storage } from './storage';
 
-// Initialize Google OAuth client with proven, working redirect URI
+// Initialize Google OAuth client with dynamic redirect URI based on request
 const getRedirectUri = (req?: Request) => {
-  // Use the known working URI that's registered in Google Cloud Console
-  return 'https://scootme--ferransson.repl.co/api/auth/google/callback';
+  // Get the host from the request or use deployment domain as fallback
+  const host = req?.headers.host || 'scoot-me-ferransson.replit.app';
+  const protocol = host.includes('localhost') ? 'http' : 'https';
+  return `${protocol}://${host}/api/auth/google/callback`;
 };
 
 // Initial redirect URI for startup logging
@@ -14,9 +16,10 @@ console.log('Google OAuth redirect URI (initial):', initialRedirectUri);
 
 // Important note about Google OAuth configuration
 console.log('IMPORTANT: Make sure to register ALL potential redirect URIs in the Google Cloud Console:');
-console.log('1. The primary domain: https://scootme--ferransson.repl.co/api/auth/google/callback');
-console.log('2. Your development domain: ' + (process.env.REPL_ID ? `https://${process.env.REPL_ID}.id.repl.co/api/auth/google/callback` : 'unknown'));
-console.log('3. Any additional Replit domains where you test this application.');
+console.log('1. The deployment domain: https://scoot-me-ferransson.replit.app/api/auth/google/callback');
+console.log('2. The development domain: https://scootme--ferransson.repl.co/api/auth/google/callback');
+console.log('3. Any Replit preview domains: ' + (process.env.REPL_ID ? `https://${process.env.REPL_ID}.id.repl.co/api/auth/google/callback` : 'unknown'));
+console.log('4. Any additional domains where you test this application.');
 
 // Log auth configuration (without exposing secrets)
 if (process.env.GOOGLE_CLIENT_ID) {
@@ -65,6 +68,12 @@ export function getGoogleAuthUrl(req: Request) {
 /**
  * Handle OAuth callback
  */
+// Type safety helper function
+function forceNonNull<T>(value: T | null): T | undefined {
+  // Convert null to undefined to satisfy the TypeScript checker
+  return value === null ? undefined : value;
+}
+
 export async function handleGoogleCallback(req: Request, res: Response) {
   try {
     console.log('Google OAuth callback received:', {
@@ -94,7 +103,8 @@ export async function handleGoogleCallback(req: Request, res: Response) {
     }
     
     // Get original domain from state parameter - this is where user should be redirected after auth
-    let redirectDomain = 'scootme--ferransson.repl.co'; // Default domain
+    // Default to the current host or fallback to the deployment domain
+    let redirectDomain = req.headers.host || 'scoot-me-ferransson.replit.app';
     
     if (state && typeof state === 'string') {
       console.log('State parameter returned:', state);
@@ -104,6 +114,8 @@ export async function handleGoogleCallback(req: Request, res: Response) {
         console.log('Using state as redirect domain:', redirectDomain);
       }
     }
+    
+    console.log('Final redirect domain:', redirectDomain);
     
     console.log('Getting tokens from code');
     // Exchange code for tokens
@@ -154,9 +166,11 @@ export async function handleGoogleCallback(req: Request, res: Response) {
           email: userInfo.email,
           fullName: userInfo.name || username,
           password: null, // No password for OAuth users
-          providerId: "google",
+          providerId: "google", // String literal, not null
           providerAccountId: userInfo.sub,
-          isEmailVerified: true // Email is verified through Google
+          isEmailVerified: true, // Email is verified through Google
+          isPhoneVerified: false, // Phone not verified by default
+          balance: 0 // Start with zero balance
         });
       } catch (createUserError) {
         console.error('Failed to create user:', createUserError);

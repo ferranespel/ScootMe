@@ -12,19 +12,9 @@ import { fromZodError } from 'zod-validation-error';
 
 declare global {
   namespace Express {
-    // Explicitly define User type to match storage interface
-    interface User {
-      id: number;
-      username: string;
-      email: string;
-      password: string | null;
-      fullName: string;
-      phoneNumber?: string | null;
-      balance?: number;
-      isEmailVerified: boolean;
-      isPhoneVerified: boolean;
-      providerId?: string;
-      providerAccountId?: string;
+    // Define User interface to match the schema from the storage
+    interface User extends SelectUser {
+      // SelectUser already has all the fields we need
     }
   }
 }
