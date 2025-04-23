@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { apiRequest } from "./queryClient";
 
 // Firebase configuration
@@ -52,19 +52,21 @@ try {
   console.error("Firebase initialization error:", error);
 }
 
-// Google Sign-in function
-export async function signInWithGoogle() {
-  if (!auth || !googleProvider) {
+// Auto-check for redirect result on page load
+export async function checkRedirectResult() {
+  if (!auth) {
     console.error("Firebase authentication not initialized");
-    throw new Error("Authentication service is not available. Please try again later.");
+    return null;
   }
 
   try {
-    console.log("Starting Google sign-in with Firebase...");
-    
-    // Sign in with popup
-    const result = await signInWithPopup(auth, googleProvider);
-    console.log("Google sign-in successful");
+    // Check if we have a redirect result
+    const result = await getRedirectResult(auth);
+    if (!result) {
+      return null;
+    }
+
+    console.log("Google sign-in redirect successful");
     
     // Get the Google user's token
     const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -96,7 +98,7 @@ export async function signInWithGoogle() {
     const errorCode = error.code;
     const errorMessage = error.message;
     
-    console.error("Firebase Google Sign-in error:", {
+    console.error("Firebase Google Sign-in redirect error:", {
       code: errorCode,
       message: errorMessage,
       details: error
@@ -105,11 +107,47 @@ export async function signInWithGoogle() {
     // Create a user-friendly error message based on the error code
     let userMessage = "Google sign-in failed. Please try again.";
     
-    if (errorCode === 'auth/popup-closed-by-user') {
-      userMessage = "Sign-in was cancelled. Please try again.";
-    } else if (errorCode === 'auth/popup-blocked') {
-      userMessage = "Sign-in popup was blocked. Please allow popups for this site and try again.";
-    } else if (errorCode === 'auth/unauthorized-domain') {
+    if (errorCode === 'auth/unauthorized-domain') {
+      userMessage = "This domain is not authorized for authentication. Please add this domain to Firebase authorized domains list.";
+    } else if (errorCode === 'auth/configuration-not-found') {
+      userMessage = "Authentication configuration not found. Please ensure Google sign-in is enabled in your Firebase project.";
+    }
+    
+    throw new Error(userMessage);
+  }
+}
+
+// Google Sign-in function - Initiates the redirect flow
+export async function signInWithGoogle() {
+  if (!auth || !googleProvider) {
+    console.error("Firebase authentication not initialized");
+    throw new Error("Authentication service is not available. Please try again later.");
+  }
+
+  try {
+    console.log("Starting Google sign-in with Firebase (redirect)...");
+    
+    // For mobile, always use redirect method which works better than popup
+    await signInWithRedirect(auth, googleProvider);
+    
+    // The page will redirect to Google at this point, so no additional code will execute
+    // After redirect back, the checkRedirectResult function will handle the result
+    return null;
+  } catch (error: any) {
+    // Handle specific Firebase auth errors
+    const errorCode = error.code;
+    const errorMessage = error.message;
+    
+    console.error("Firebase Google Sign-in redirect initiation error:", {
+      code: errorCode,
+      message: errorMessage,
+      details: error
+    });
+    
+    // Create a user-friendly error message based on the error code
+    let userMessage = "Google sign-in failed. Please try again.";
+    
+    if (errorCode === 'auth/unauthorized-domain') {
       userMessage = "This domain is not authorized for authentication. Please add this domain to Firebase authorized domains list.";
     } else if (errorCode === 'auth/configuration-not-found') {
       userMessage = "Authentication configuration not found. Please ensure Google sign-in is enabled in your Firebase project.";
