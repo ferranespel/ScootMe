@@ -66,9 +66,26 @@ export default function AuthPage() {
     });
   };
 
+  // State to track Google auth error message
+  const [googleAuthError, setGoogleAuthError] = useState<string | null>(null);
+  
   // Handle Google login
   const handleGoogleLogin = () => {
-    googleLoginMutation.mutate();
+    setGoogleAuthError(null); // Clear any previous errors
+    googleLoginMutation.mutate(undefined, {
+      onError: (error) => {
+        console.error("Google login error:", error);
+        if (error.message.includes("unauthorized-domain") || error.message.includes("domain is not authorized")) {
+          // Provide specific error message and instructions for domain authorization
+          const domain = window.location.hostname;
+          setGoogleAuthError(
+            `${t('auth.domainNotAuthorized')} ${domain}\n${t('auth.addDomainInstructions')}`
+          );
+        } else {
+          setGoogleAuthError(error.message);
+        }
+      }
+    });
   };
 
   // Redirect if already logged in
@@ -144,6 +161,23 @@ export default function AuthPage() {
                 )}
                 <span>{t('auth.continueWithGoogle')}</span>
               </Button>
+              
+              {/* Google auth error message */}
+              {googleAuthError && (
+                <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm mt-2">
+                  <h4 className="font-semibold mb-1">Google Authentication Error</h4>
+                  <p className="whitespace-pre-line">{googleAuthError}</p>
+                  <div className="mt-2 p-2 bg-background/40 rounded text-xs border border-destructive/20">
+                    <strong>Firebase Domain Setup:</strong>
+                    <ol className="list-decimal ml-4 mt-1 space-y-1">
+                      <li>Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">Firebase Console</a></li>
+                      <li>Select project: <strong>scootme-22a67</strong></li>
+                      <li>Go to Authentication → Settings → Authorized domains</li>
+                      <li>Add <code className="bg-background p-1 rounded text-xs">{window.location.hostname}</code></li>
+                    </ol>
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="relative flex items-center justify-center">
