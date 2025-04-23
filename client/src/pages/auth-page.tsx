@@ -239,25 +239,10 @@ If you experience authentication issues, please add this domain to Firebase auth
           <CardContent className="space-y-6">
             {/* Social Login Buttons */}
             <div className="grid gap-4">
-              {/* Firebase Google Auth (has domain restrictions) */}
+              {/* Google Auth Button - Single unified option */}
               <Button 
                 variant="outline" 
                 className="flex items-center justify-center gap-2 h-12"
-                onClick={handleGoogleLogin}
-                disabled={googleLoginMutation.isPending}
-              >
-                {googleLoginMutation.isPending ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <FcGoogle className="h-5 w-5" />
-                )}
-                <span>{t('auth.continueWithGoogle')} (Firebase)</span>
-              </Button>
-              
-              {/* Direct Google OAuth option (alternative) - NEW IMPROVED BUTTON */}
-              <Button 
-                variant="outline" 
-                className="flex items-center justify-center gap-2 h-12 border-primary/20 hover:bg-primary/5"
                 onClick={startDirectGoogleAuth}
                 disabled={directGoogleAuthLoading}
               >
@@ -266,28 +251,8 @@ If you experience authentication issues, please add this domain to Firebase auth
                 ) : (
                   <FcGoogle className="h-5 w-5" />
                 )}
-                <span>{t('auth.continueWithGoogle')} (Recommended)</span>
+                <span>{t('auth.continueWithGoogle')}</span>
               </Button>
-              
-              {/* Info about Direct Google Auth */}
-              <div className="bg-blue-50 p-3 rounded-md text-sm mt-1 border border-blue-100">
-                <h4 className="font-semibold text-blue-700 mb-1 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Authentication Update
-                </h4>
-                <p className="text-blue-700 text-xs mb-2">
-                  We now support two methods of Google authentication:
-                </p>
-                <ul className="list-disc ml-4 text-xs text-blue-700 space-y-1">
-                  <li><strong>Firebase Authentication</strong> (may have domain restrictions)</li>
-                  <li><strong>Direct Google OAuth</strong> (recommended, works on all domains)</li>
-                </ul>
-                <p className="text-xs text-blue-700 mt-2">
-                  If you experience issues with Firebase authentication, please use the recommended Direct Google OAuth option.
-                </p>
-              </div>
               
               {/* Google auth error message */}
               {googleAuthError && (

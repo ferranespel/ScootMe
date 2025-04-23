@@ -154,7 +154,6 @@ export async function handleGoogleCallback(req: Request, res: Response) {
           email: userInfo.email,
           fullName: userInfo.name || username,
           password: null, // No password for OAuth users
-          profilePicture: userInfo.picture || null,
           providerId: "google",
           providerAccountId: userInfo.sub,
           isEmailVerified: true // Email is verified through Google

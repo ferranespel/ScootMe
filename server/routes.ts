@@ -46,7 +46,7 @@ declare global {
       email: string;
       password: string | null;
       fullName: string;
-      phoneNumber?: string;
+      phoneNumber?: string | null;
       balance?: number;
       isEmailVerified: boolean;
       isPhoneVerified: boolean;

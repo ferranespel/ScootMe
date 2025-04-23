@@ -12,7 +12,20 @@ import { fromZodError } from 'zod-validation-error';
 
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    // Explicitly define User type to match storage interface
+    interface User {
+      id: number;
+      username: string;
+      email: string;
+      password: string | null;
+      fullName: string;
+      phoneNumber?: string | null;
+      balance?: number;
+      isEmailVerified: boolean;
+      isPhoneVerified: boolean;
+      providerId?: string;
+      providerAccountId?: string;
+    }
   }
 }
 
