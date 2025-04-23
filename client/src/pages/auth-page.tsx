@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
+import { useGoogleAuth, useGoogleAuthCallback } from "@/hooks/use-google-auth";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,9 +29,10 @@ export default function AuthPage() {
     user, 
     isLoading, 
     phoneLoginMutation, 
-    phoneVerifyMutation, 
-    googleLoginMutation
+    phoneVerifyMutation
   } = useAuth();
+  const { startGoogleAuth, isLoading: isGoogleLoading } = useGoogleAuth();
+  const { checkAuthReturn } = useGoogleAuthCallback();
   const [, navigate] = useLocation();
   const [phoneStep, setPhoneStep] = useState<"phoneEntry" | "codeVerification">("phoneEntry");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -66,10 +68,15 @@ export default function AuthPage() {
     });
   };
 
-  // Handle Google login
+  // Handle Google login using the direct method
   const handleGoogleLogin = () => {
-    googleLoginMutation.mutate();
+    startGoogleAuth();
   };
+  
+  // Check if we returned from Google auth
+  useEffect(() => {
+    checkAuthReturn();
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -135,9 +142,9 @@ export default function AuthPage() {
                 variant="outline" 
                 className="flex items-center justify-center gap-2 h-12"
                 onClick={handleGoogleLogin}
-                disabled={googleLoginMutation.isPending}
+                disabled={isGoogleLoading}
               >
-                {googleLoginMutation.isPending ? (
+                {isGoogleLoading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <FcGoogle className="h-5 w-5" />
