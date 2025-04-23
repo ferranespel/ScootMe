@@ -51,12 +51,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
   
-  // Direct Google OAuth routes
+  // Direct Google OAuth routes - now with dynamic redirect URI support
   app.get("/api/auth/google/url", (req, res) => {
     try {
-      console.log("Generating Google OAuth URL...");
-      const url = getGoogleAuthUrl();
-      console.log("Generated URL:", url.substring(0, 50) + "..." + "(truncated)");
+      console.log("Generating Google OAuth URL for host:", req.headers.host);
+      // Pass the request object to get the appropriate redirect URI
+      const url = getGoogleAuthUrl(req);
+      console.log("Generated URL:", url.substring(0, 60) + "..." + "(truncated)");
       res.json({ url });
     } catch (error) {
       console.error("Error generating Google auth URL:", error);
