@@ -114,12 +114,23 @@ export async function sendSmsVerification(phoneNumber: string, code: string): Pr
       
       console.log(`Sending SMS to: ${phoneNumber} with code: ${code}`);
       
-      // Send the SMS
-      const message = await client.messages.create({
-        body: `Your EcoScoot verification code is: ${code}. This code will expire in 10 minutes.`,
-        from: twilioPhoneNumber,
+      // Prepare message options
+      const messageOptions: any = {
+        body: `Your ScootMe verification code is: ${code}. This code will expire in 10 minutes.`,
         to: phoneNumber
-      });
+      };
+      
+      // If a Messaging Service SID is available, use it instead of the from number
+      // Messaging Service allows custom sender IDs in supported countries
+      const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+      if (messagingServiceSid) {
+        messageOptions.messagingServiceSid = messagingServiceSid;
+      } else {
+        messageOptions.from = twilioPhoneNumber;
+      }
+      
+      // Send the SMS
+      const message = await client.messages.create(messageOptions);
       
       console.log(`SMS sent successfully with Twilio SID: ${message.sid}`);
       return true;
