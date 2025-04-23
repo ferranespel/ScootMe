@@ -39,8 +39,20 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
 // TypeScript interface augmentation to make req.user accessible with correct typing
 declare global {
   namespace Express {
-    // This properly types req.user as our User type from the schema
-    interface User extends User {}
+    // Type req.user correctly without circular reference
+    interface User {
+      id: number;
+      username: string;
+      email: string;
+      password: string | null;
+      fullName: string;
+      phoneNumber?: string;
+      balance?: number;
+      isEmailVerified: boolean;
+      isPhoneVerified: boolean;
+      providerId?: string;
+      providerAccountId?: string;
+    }
   }
 }
 
@@ -48,13 +60,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
   
-  // Direct Google OAuth routes - now with dynamic redirect URI support
+  // Direct Google OAuth routes - revert to working version
   app.get("/api/auth/google/url", (req, res) => {
     try {
-      console.log("Generating Google OAuth URL for host:", req.headers.host);
-      // Pass the request object to get the appropriate redirect URI
+      console.log("Generating Google OAuth URL...");
       const url = getGoogleAuthUrl(req);
-      console.log("Generated URL:", url.substring(0, 60) + "..." + "(truncated)");
+      console.log("Generated URL:", url.substring(0, 50) + "..." + "(truncated)");
       res.json({ url });
     } catch (error) {
       console.error("Error generating Google auth URL:", error);

@@ -2,22 +2,10 @@ import { Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { storage } from './storage';
 
-// Google OAuth uses a fixed redirect URI approach 
-// Since Google requires pre-registered redirect URIs, we use a fixed one.
-// Then, we pass the original host as state parameter and use a proxy redirect approach
-
-// IMPORTANT: The following URL must be registered in the Google Cloud Console
-const FIXED_GOOGLE_REDIRECT_URI = 'https://scootme--ferransson.repl.co/api/auth/google/callback';
-
-// Function to get redirect URI - ALWAYS returns the fixed URI
+// Initialize Google OAuth client with proven, working redirect URI
 const getRedirectUri = (req?: Request) => {
-  // Show what URL we're actually using for debugging 
-  if (req && req.headers.host) {
-    console.log(`Original host: ${req.headers.host} - using fixed redirect URI instead`);
-  }
-  
-  // Always return our fixed redirect URI that's registered in Google Cloud Console
-  return FIXED_GOOGLE_REDIRECT_URI;
+  // Use the known working URI that's registered in Google Cloud Console
+  return 'https://scootme--ferransson.repl.co/api/auth/google/callback';
 };
 
 // Initial redirect URI for startup logging
