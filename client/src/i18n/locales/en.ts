@@ -71,6 +71,8 @@ const translation = {
     continueWithPhone: "Continue with Phone",
     orContinueWith: "or",
     phoneNumber: "Phone Number",
+    phoneNumberPlaceholder: "Enter number", 
+    selectCountry: "Select country",
     sendingCode: "Sending verification code...",
     backToPhoneEntry: "Back to phone entry",
     termsText: "By signing in, you agree to our Terms of Service and Privacy Policy",

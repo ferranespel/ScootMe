@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
 import { z } from "zod";
@@ -20,6 +20,7 @@ import { Loader2, Phone } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/language-selector";
+import { PhoneInput } from "@/components/phone-input";
 
 export default function AuthPage() {
   const { t } = useTranslation();
@@ -157,23 +158,17 @@ export default function AuthPage() {
             {/* Phone Authentication */}
             {phoneStep === "phoneEntry" ? (
               <form onSubmit={phoneForm.handleSubmit(onPhoneLoginSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone-number">{t('auth.phoneNumber')}</Label>
-                  <div className="flex">
-                    <Input
-                      id="phone-number"
-                      type="tel"
-                      placeholder="+354 774 12 74"
-                      className="flex-1"
-                      {...phoneForm.register("phoneNumber")}
+                <Controller
+                  name="phoneNumber"
+                  control={phoneForm.control}
+                  render={({ field, fieldState }) => (
+                    <PhoneInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      error={fieldState.error?.message}
                     />
-                  </div>
-                  {phoneForm.formState.errors.phoneNumber && (
-                    <p className="text-red-500 text-sm">
-                      {phoneForm.formState.errors.phoneNumber.message}
-                    </p>
                   )}
-                </div>
+                />
                 
                 <Button 
                   type="submit" 
