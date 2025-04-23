@@ -60,13 +60,19 @@ export async function checkRedirectResult() {
   }
 
   try {
+    console.log("Checking for Google sign-in redirect result...");
+    console.log("Current URL:", window.location.href);
+    
     // Check if we have a redirect result
     const result = await getRedirectResult(auth);
+    
+    // If no result found, log it and return null
     if (!result) {
+      console.log("No redirect result found");
       return null;
     }
 
-    console.log("Google sign-in redirect successful");
+    console.log("Google sign-in redirect successful, got result:", result);
     
     // Get the Google user's token
     const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -90,8 +96,14 @@ export async function checkRedirectResult() {
       photoURL: user.photoURL
     });
     
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Backend authentication failed:", errorText);
+      throw new Error(`Server error: ${response.status} ${errorText}`);
+    }
+    
     const userData = await response.json();
-    console.log("Backend authentication successful");
+    console.log("Backend authentication successful", userData);
     return userData;
   } catch (error: any) {
     // Handle specific Firebase auth errors
@@ -108,16 +120,23 @@ export async function checkRedirectResult() {
     let userMessage = "Google sign-in failed. Please try again.";
     
     if (errorCode === 'auth/unauthorized-domain') {
-      userMessage = "This domain is not authorized for authentication. Please add this domain to Firebase authorized domains list.";
+      userMessage = "This domain is not authorized for authentication. Please visit Firebase console and add this domain to authorized domains list.";
+      console.error("Domain authorization error. Make sure to add these domains to Firebase console:", {
+        currentHost: window.location.host,
+        currentOrigin: window.location.origin,
+        currentHostname: window.location.hostname
+      });
     } else if (errorCode === 'auth/configuration-not-found') {
       userMessage = "Authentication configuration not found. Please ensure Google sign-in is enabled in your Firebase project.";
+    } else if (errorCode === 'auth/operation-not-allowed') {
+      userMessage = "Google sign-in is not enabled for this Firebase project. Please enable it in the Firebase console.";
     }
     
     throw new Error(userMessage);
   }
 }
 
-// Google Sign-in function - Initiates the redirect flow
+// Google Sign-in function - Dual approach (popup for desktop, redirect for mobile)
 export async function signInWithGoogle() {
   if (!auth || !googleProvider) {
     console.error("Firebase authentication not initialized");
@@ -125,20 +144,77 @@ export async function signInWithGoogle() {
   }
 
   try {
-    console.log("Starting Google sign-in with Firebase (redirect)...");
+    // Log more domain information for debugging
+    console.log("Starting Google sign-in with Firebase...");
+    console.log("Auth domain:", import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
+    console.log("Current origin:", window.location.origin);
+    console.log("Current hostname:", window.location.hostname);
+
+    // Add dynamic origin to allowed domains
+    googleProvider.setCustomParameters({
+      prompt: 'select_account',
+      // Add the current origin as a valid redirect URI
+      login_hint: window.location.hostname
+    });
+
+    // Detect if running on mobile (simpler approach)
+    const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // For mobile, always use redirect method which works better than popup
-    await signInWithRedirect(auth, googleProvider);
+    let user;
+    if (isMobile) {
+      // For mobile, use redirect method which works better
+      console.log("Using redirect auth for mobile device");
+      await signInWithRedirect(auth, googleProvider);
+      // The page will redirect to Google at this point, so no additional code will execute
+      return null;
+    } else {
+      // For desktop, try popup first as it's better UX (no page navigation)
+      console.log("Using popup auth for desktop device");
+      try {
+        const result = await signInWithPopup(auth, googleProvider);
+        // Get the Google user's token
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const token = credential?.accessToken;
+        user = result.user;
+      } catch (popupError: any) {
+        console.error("Popup auth failed, falling back to redirect:", popupError);
+        if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
+          await signInWithRedirect(auth, googleProvider);
+          return null;
+        }
+        // If it's another error, throw it
+        throw popupError;
+      }
+    }
     
-    // The page will redirect to Google at this point, so no additional code will execute
-    // After redirect back, the checkRedirectResult function will handle the result
-    return null;
+    if (!user) return null;
+    
+    console.log("User authenticated with Firebase:", {
+      uid: user.uid,
+      email: user.email ? "Provided" : "Missing",
+      displayName: user.displayName ? "Provided" : "Missing",
+      photoURL: user.photoURL ? "Provided" : "Missing",
+    });
+    
+    // If successful, send user info to our backend to create/login user
+    console.log("Sending user data to backend for authentication...");
+    const response = await apiRequest("POST", "/api/auth/firebase/google", {
+      token: null, // We no longer use the token from Google directly
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL
+    });
+    
+    const userData = await response.json();
+    console.log("Backend authentication successful");
+    return userData;
   } catch (error: any) {
     // Handle specific Firebase auth errors
     const errorCode = error.code;
     const errorMessage = error.message;
     
-    console.error("Firebase Google Sign-in redirect initiation error:", {
+    console.error("Firebase Google Sign-in error:", {
       code: errorCode,
       message: errorMessage,
       details: error
