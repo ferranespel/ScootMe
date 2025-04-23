@@ -24,7 +24,7 @@ type AuthContextType = {
   registerMutation: UseMutationResult<SelectUser, Error, RegisterData>;
   phoneLoginMutation: UseMutationResult<void, Error, PhoneLoginData>;
   phoneVerifyMutation: UseMutationResult<SelectUser, Error, PhoneVerifyData>;
-  googleLoginMutation: UseMutationResult<void, Error, void>;
+  googleLoginMutation: UseMutationResult<SelectUser, Error, void>;
 };
 
 type LoginData = z.infer<typeof loginSchema>;
