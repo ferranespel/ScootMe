@@ -150,7 +150,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const googleLoginMutation = useMutation({
     mutationFn: async () => {
-      window.location.href = "/api/auth/google";
+      // Import firebase auth functions dynamically to avoid loading them on every page
+      const { signInWithGoogle } = await import("@/lib/firebase");
+      try {
+        const userData = await signInWithGoogle();
+        return userData;
+      } catch (error) {
+        console.error("Firebase Google sign-in error:", error);
+        throw error;
+      }
+    },
+    onSuccess: (user: SelectUser) => {
+      queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Login successful",
+        description: `Welcome to ScootMe, ${user.fullName}!`,
+      });
     },
     onError: (error: Error) => {
       toast({

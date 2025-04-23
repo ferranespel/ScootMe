@@ -2,7 +2,10 @@
 
 interface ImportMetaEnv {
   readonly GOOGLE_MAPS_API_KEY: string;
-  // add more environment variables as needed
+  readonly FIREBASE_API_KEY: string;
+  readonly FIREBASE_AUTH_DOMAIN: string;
+  readonly FIREBASE_PROJECT_ID: string;
+  readonly FIREBASE_APP_ID: string;
 }
 
 interface ImportMeta {

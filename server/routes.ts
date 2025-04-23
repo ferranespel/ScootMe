@@ -745,6 +745,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create HTTP server
+  // Add Firebase authentication route
+  app.post("/api/auth/firebase/google", async (req, res) => {
+    try {
+      const { uid, email, displayName, photoURL } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      // Check if user already exists with this Google ID
+      let user = await storage.getUserByProviderId("firebase", uid);
+      
+      if (!user) {
+        // Create new user
+        const username = `${(displayName || email.split('@')[0]).toLowerCase().replace(/\s+/g, '_')}_${Math.floor(Math.random() * 1000)}`;
+        
+        user = await storage.createUser({
+          username,
+          email,
+          fullName: displayName || username,
+          password: null, // No password for OAuth users
+          profilePicture: photoURL || null,
+          providerId: "firebase",
+          providerAccountId: uid,
+          isEmailVerified: true // Email is verified through Google
+        });
+      }
+      
+      // Log the user in
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Login failed", error: err.message });
+        }
+        
+        // Return user without password
+        const { password, ...userWithoutPassword } = user;
+        return res.status(200).json(userWithoutPassword);
+      });
+    } catch (error: any) {
+      console.error("Firebase auth error:", error);
+      res.status(500).json({ message: "Authentication failed", error: error.message });
+    }
+  });
+  
   const httpServer = createServer(app);
   return httpServer;
 }
