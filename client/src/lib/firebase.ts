@@ -12,9 +12,9 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let app;
-let auth;
-let googleProvider;
+let app: any;
+let auth: any;
+let googleProvider: any;
 
 try {
   // Log the Firebase config and current domain for debugging
@@ -67,15 +67,39 @@ export async function checkRedirectResult() {
     // Get the redirect result safely
     let result;
     try {
+      console.log("Attempting to get redirect result...");
+      // Add debug info about URL parameters
+      console.log("URL search params:", window.location.search);
+      console.log("URL hash:", window.location.hash);
+      
       result = await getRedirectResult(auth);
+      console.log("Raw redirect result:", result ? "Success" : "No result");
+      
+      // Check for specific error indicators in URL
+      if (window.location.search.includes("error=")) {
+        console.error("Error parameter detected in URL:", window.location.search);
+        // Parse the error message from URL if possible
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorMsg = urlParams.get("error");
+        throw new Error(`Authentication redirect error: ${errorMsg || "Unknown error"}`);
+      }
     } catch (error) {
       console.error("Error getting redirect result:", error);
+      // Display error notification for debugging
+      alert(`Failed to get Google redirect result. This usually happens when the domain isn't authorized in Firebase console. Please add "${window.location.hostname}" to Firebase authorized domains.`);
       return null;
     }
     
-    // If no result found, return null
+    // If no result found, return null with more detailed info
     if (!result) {
-      console.log("No redirect result found");
+      console.log("No redirect result found, but no errors detected");
+      // Check if we have any Firebase error info in local storage
+      const storedError = localStorage.getItem("firebase_auth_error");
+      if (storedError) {
+        console.error("Found stored Firebase error:", storedError);
+        localStorage.removeItem("firebase_auth_error"); // Clear the error
+        alert(`Previous authentication attempt failed: ${storedError}`);
+      }
       return null;
     }
 
@@ -114,17 +138,42 @@ export async function signInWithGoogle() {
   try {
     console.log("Starting Google sign-in with Firebase...");
     
+    // TEMPORARY FIX: Force mobile flow for all devices for testing
+    const forceMobileFlow = true; 
+    
     // Detect if running on mobile
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobile = forceMobileFlow || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Print mobile detection details
+    console.log("Mobile detection:", {
+      forceMobileFlow,
+      userAgent: navigator.userAgent,
+      isMobileDetected: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+      finalDecision: isMobile
+    });
     
     // Mobile: always use redirect for better compatibility
     if (isMobile) {
       console.log("Mobile device detected, using redirect auth");
       try {
+        // Store current timestamp before redirect to help debugging
+        localStorage.setItem("firebase_auth_attempt", Date.now().toString());
+        
+        // Set up custom parameters to help with debugging
+        googleProvider.setCustomParameters({
+          prompt: 'select_account',
+          state: window.location.hostname // Pass hostname as state for debugging
+        });
+        
+        console.log("Starting redirect with provider:", googleProvider);
         await signInWithRedirect(auth, googleProvider);
         return null; // Page will redirect, this won't execute
-      } catch (error) {
+      } catch (error: any) {
         console.error("Mobile redirect error:", error);
+        // Store error for future debugging
+        if (error && error.code) {
+          localStorage.setItem("firebase_auth_error", `${error.code}: ${error.message}`);
+        }
         handleAuthError(error);
         return null;
       }
@@ -156,6 +205,17 @@ export async function signInWithGoogle() {
           popupError.code === 'auth/cancelled-popup-request') {
         
         console.log("Using redirect auth as fallback");
+        
+        // Store current timestamp before redirect to help debugging
+        localStorage.setItem("firebase_auth_attempt", Date.now().toString());
+        localStorage.setItem("firebase_auth_fallback", "true");
+        
+        // Set up custom parameters to help with debugging
+        googleProvider.setCustomParameters({
+          prompt: 'select_account',
+          state: `fallback-${window.location.hostname}` // Pass hostname as state for debugging
+        });
+        
         await signInWithRedirect(auth, googleProvider);
         return null; // Page will redirect, this won't execute
       }
@@ -166,6 +226,12 @@ export async function signInWithGoogle() {
     }
   } catch (error) {
     console.error("Firebase auth error:", error);
+    
+    // Store error for debugging
+    if (error && (error.code || error.message)) {
+      localStorage.setItem("firebase_auth_error", `${error.code || 'unknown'}: ${error.message || 'No message'}`);
+    }
+    
     handleAuthError(error);
     return null;
   }
@@ -217,8 +283,10 @@ function handleAuthError(error) {
   let userMessage = "Google sign-in failed. Please try again.";
   
   if (errorCode === 'auth/unauthorized-domain') {
-    userMessage = "This domain is not authorized for authentication. Please add this domain to the Firebase authorized domains list.";
-    console.error("Domain authorization issue. Current domain:", window.location.hostname);
+    userMessage = `This domain (${window.location.hostname}) is not authorized for authentication. Add exactly this domain to Firebase console's authorized domains list.`;
+    console.error("Domain authorization issue. Please add the following domain to Firebase authorized domains list:", window.location.hostname);
+    // Alert with specific instructions
+    alert(`Authentication Error: The domain "${window.location.hostname}" must be added to Firebase authorized domains list under Authentication > Settings in the Firebase console.`);
   } else if (errorCode === 'auth/configuration-not-found') {
     userMessage = "Authentication configuration not found. Please ensure Google sign-in is enabled in your Firebase project.";
   } else if (errorCode === 'auth/network-request-failed') {
