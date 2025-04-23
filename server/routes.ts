@@ -21,7 +21,9 @@ import {
   sendSmsVerification,
   markEmailAsVerified,
   markPhoneAsVerified,
-  verificationCodes
+  verificationCodes,
+  generateVerificationCode,
+  getVerificationExpiry
 } from "./verification";
 
 // Helper to check if user is authenticated
