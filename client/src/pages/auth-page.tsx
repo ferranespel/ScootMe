@@ -254,7 +254,7 @@ If you experience authentication issues, please add this domain to Firebase auth
                 <span>{t('auth.continueWithGoogle')} (Firebase)</span>
               </Button>
               
-              {/* Direct Google OAuth option (alternative) */}
+              {/* Direct Google OAuth option (alternative) - NEW IMPROVED BUTTON */}
               <Button 
                 variant="outline" 
                 className="flex items-center justify-center gap-2 h-12 border-primary/20 hover:bg-primary/5"
@@ -266,8 +266,28 @@ If you experience authentication issues, please add this domain to Firebase auth
                 ) : (
                   <FcGoogle className="h-5 w-5" />
                 )}
-                <span>{t('auth.continueWithGoogle')} (Direct)</span>
+                <span>{t('auth.continueWithGoogle')} (Recommended)</span>
               </Button>
+              
+              {/* Info about Direct Google Auth */}
+              <div className="bg-blue-50 p-3 rounded-md text-sm mt-1 border border-blue-100">
+                <h4 className="font-semibold text-blue-700 mb-1 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Authentication Update
+                </h4>
+                <p className="text-blue-700 text-xs mb-2">
+                  We now support two methods of Google authentication:
+                </p>
+                <ul className="list-disc ml-4 text-xs text-blue-700 space-y-1">
+                  <li><strong>Firebase Authentication</strong> (may have domain restrictions)</li>
+                  <li><strong>Direct Google OAuth</strong> (recommended, works on all domains)</li>
+                </ul>
+                <p className="text-xs text-blue-700 mt-2">
+                  If you experience issues with Firebase authentication, please use the recommended Direct Google OAuth option.
+                </p>
+              </div>
               
               {/* Google auth error message */}
               {googleAuthError && (
@@ -309,14 +329,38 @@ If you experience authentication issues, please add this domain to Firebase auth
                 </div>
               )}
               
-              {/* Direct Google auth error */}
+              {/* Direct Google auth error - IMPROVED ERROR MESSAGES */}
               {directGoogleAuthError && !googleAuthError && (
                 <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm mt-2">
                   <h4 className="font-semibold mb-1">Direct Google Authentication Error</h4>
                   <p>{directGoogleAuthError}</p>
-                  <div className="mt-2 text-xs">
-                    Please try again or use another authentication method.
-                  </div>
+                  
+                  {directGoogleAuthError.includes("redirect_uri_mismatch") ? (
+                    <div className="mt-3 p-3 bg-background/40 rounded text-xs border border-destructive/20">
+                      <strong className="block text-sm mb-2">Redirect URI Mismatch:</strong>
+                      <p className="mb-2">This domain needs to be registered in the Google Cloud Console:</p>
+                      
+                      <div className="bg-background p-2 rounded font-mono text-xs mb-3 overflow-x-auto">
+                        {window.location.origin + "/api/auth/google/callback"}
+                      </div>
+                      
+                      <p className="mb-2">Currently registered redirect URI:</p>
+                      <div className="bg-background p-2 rounded font-mono text-xs mb-3 overflow-x-auto">
+                        https://scootme--ferransson.repl.co/api/auth/google/callback
+                      </div>
+                      
+                      <div className="flex items-center gap-2 mt-3 text-amber-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Please use the phone authentication method for now.</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-xs">
+                      <p>Please try again or use another authentication method.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
