@@ -62,9 +62,14 @@ export async function checkRedirectResult() {
   try {
     console.log("Checking for Google sign-in redirect result...");
     console.log("Current URL:", window.location.href);
+    console.log("Current domain:", window.location.hostname);
+    console.log("Current origin:", window.location.origin);
     
     // Check if we have a redirect result
-    const result = await getRedirectResult(auth);
+    const result = await getRedirectResult(auth).catch(error => {
+      console.error("Error getting redirect result:", error);
+      return null;
+    });
     
     // If no result found, log it and return null
     if (!result) {
@@ -149,7 +154,16 @@ export async function signInWithGoogle() {
     console.log("Auth domain:", import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
     console.log("Current origin:", window.location.origin);
     console.log("Current hostname:", window.location.hostname);
-
+    console.log("Auth provider ready:", !!googleProvider);
+    console.log("Auth instance ready:", !!auth);
+    
+    // Print all authorized domains from Firebase config if available
+    if (auth) {
+      console.log("Firebase auth config:", auth.config);
+      console.log("Firebase app:", app?.options);
+      console.log("Firebase auth:", auth);
+    }
+    
     // Add dynamic origin to allowed domains
     googleProvider.setCustomParameters({
       prompt: 'select_account',
@@ -160,55 +174,56 @@ export async function signInWithGoogle() {
     // Detect if running on mobile (simpler approach)
     const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    let user;
+    // On mobile, always use redirect to avoid popup issues
     if (isMobile) {
-      // For mobile, use redirect method which works better
-      console.log("Using redirect auth for mobile device");
+      console.log("Mobile detected, using redirect auth method");
       await signInWithRedirect(auth, googleProvider);
       // The page will redirect to Google at this point, so no additional code will execute
       return null;
-    } else {
-      // For desktop, try popup first as it's better UX (no page navigation)
-      console.log("Using popup auth for desktop device");
-      try {
-        const result = await signInWithPopup(auth, googleProvider);
-        // Get the Google user's token
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        const token = credential?.accessToken;
-        user = result.user;
-      } catch (popupError: any) {
-        console.error("Popup auth failed, falling back to redirect:", popupError);
-        if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
-          await signInWithRedirect(auth, googleProvider);
-          return null;
-        }
-        // If it's another error, throw it
-        throw popupError;
-      }
     }
     
-    if (!user) return null;
-    
-    console.log("User authenticated with Firebase:", {
-      uid: user.uid,
-      email: user.email ? "Provided" : "Missing",
-      displayName: user.displayName ? "Provided" : "Missing",
-      photoURL: user.photoURL ? "Provided" : "Missing",
-    });
-    
-    // If successful, send user info to our backend to create/login user
-    console.log("Sending user data to backend for authentication...");
-    const response = await apiRequest("POST", "/api/auth/firebase/google", {
-      token: null, // We no longer use the token from Google directly
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL
-    });
-    
-    const userData = await response.json();
-    console.log("Backend authentication successful");
-    return userData;
+    // For desktop, use popup first
+    try {
+      console.log("Desktop detected, using popup auth method");
+      const result = await signInWithPopup(auth, googleProvider);
+      
+      // Get the user's data
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken;
+      const user = result.user;
+      
+      if (user) {
+        console.log("User authenticated with Firebase via popup:", {
+          uid: user.uid,
+          email: user.email ? "Provided" : "Missing",
+          displayName: user.displayName ? "Provided" : "Missing",
+        });
+        
+        // If successful, send user info to our backend to create/login user
+        console.log("Sending user data to backend for authentication...");
+        const response = await apiRequest("POST", "/api/auth/firebase/google", {
+          token: token,
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL
+        });
+        
+        const userData = await response.json();
+        console.log("Backend authentication successful");
+        return userData;
+      }
+      
+      return null;
+    } catch (popupError: any) {
+      console.error("Popup auth failed, falling back to redirect:", popupError);
+      
+      // Use redirect as fallback for all errors on desktop too
+      console.log("Using redirect auth as fallback");
+      await signInWithRedirect(auth, googleProvider);
+      // The page will redirect to Google at this point, so no additional code will execute
+      return null;
+    }
   } catch (error: any) {
     // Handle specific Firebase auth errors
     const errorCode = error.code;
@@ -225,8 +240,18 @@ export async function signInWithGoogle() {
     
     if (errorCode === 'auth/unauthorized-domain') {
       userMessage = "This domain is not authorized for authentication. Please add this domain to Firebase authorized domains list.";
+      console.error("Domain authorization issue. Current domain:", window.location.hostname);
     } else if (errorCode === 'auth/configuration-not-found') {
       userMessage = "Authentication configuration not found. Please ensure Google sign-in is enabled in your Firebase project.";
+    } else if (errorCode === 'auth/network-request-failed') {
+      userMessage = "Network connection error. Please check your internet connection and try again.";
+    } else if (errorCode === 'auth/popup-blocked') {
+      // Instead of throwing an error, we'll just try redirect silently
+      console.log("Popup blocked, trying redirect silently...");
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    } else if (errorCode === 'auth/cancelled-popup-request' || errorCode === 'auth/popup-closed-by-user') {
+      userMessage = "Sign-in cancelled. Please try again.";
     }
     
     throw new Error(userMessage);
