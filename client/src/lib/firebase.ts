@@ -105,7 +105,9 @@ export async function signInWithGoogle() {
     } else if (errorCode === 'auth/popup-blocked') {
       userMessage = "Sign-in popup was blocked. Please allow popups for this site and try again.";
     } else if (errorCode === 'auth/unauthorized-domain') {
-      userMessage = "This domain is not authorized for authentication. Please contact support.";
+      userMessage = "This domain is not authorized for authentication. Please add this domain to Firebase authorized domains list.";
+    } else if (errorCode === 'auth/configuration-not-found') {
+      userMessage = "Authentication configuration not found. Please ensure Google sign-in is enabled in your Firebase project.";
     }
     
     throw new Error(userMessage);
