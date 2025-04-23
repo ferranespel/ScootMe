@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useEffect } from "react";
 import {
   useQuery,
   useMutation,
@@ -40,10 +40,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
+    refetch
   } = useQuery<SelectUser | null, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
+  
+  // Check for Firebase redirect result when component mounts
+  useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        // Dynamically import to avoid loading Firebase on every page
+        const { checkRedirectResult } = await import("@/lib/firebase");
+        const userData = await checkRedirectResult();
+        
+        if (userData) {
+          // If we got user data from a redirect, update the auth state
+          queryClient.setQueryData(["/api/user"], userData);
+          toast({
+            title: "Login successful",
+            description: `Welcome to ScootMe, ${userData.fullName}!`,
+          });
+        }
+      } catch (error: any) {
+        console.error("Error handling Firebase redirect:", error);
+        toast({
+          title: "Google login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    };
+    
+    checkRedirect();
+  }, [toast]);
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
