@@ -145,7 +145,7 @@ export default function AuthPage() {
                 <span>{t('auth.continueWithGoogle')}</span>
               </Button>
               <p className="text-xs text-amber-600 text-center mt-1">
-                Note: Firebase Google Sign-In requires domain configuration. Use phone sign-in until configured.
+                Note: Firebase Google Sign-In requires domain configuration. Please use phone sign-in instead (error: unauthorized-domain).
               </p>
             </div>
             
