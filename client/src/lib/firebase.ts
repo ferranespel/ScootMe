@@ -46,9 +46,9 @@ try {
     prompt: 'select_account',
     // Add login_hint if we have a saved email to speed up the process
     login_hint: localStorage.getItem('last_login_email') || undefined,
-    // Include current origin and hostname for debugging
-    state: `${window.location.origin}|${window.location.hostname}`,
-    // Allow redirect to firebase domain first (for auth) then back to our site
+    // Store the domain for verification later
+    state: window.location.hostname,
+    // Ensure proper redirect back to our auth page
     redirect_uri: window.location.origin + '/auth'
   });
   

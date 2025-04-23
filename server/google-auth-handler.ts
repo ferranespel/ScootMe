@@ -32,16 +32,21 @@ export async function handleGoogleAuth(req: Request, res: Response) {
     let user = await storage.getUserByEmail(email);
     
     if (!user) {
-      // Create new user
+      // Create new user with a unique username (avoid collisions)
+      const usernameBase = email.split('@')[0];
+      const uniqueSuffix = Math.floor(Math.random() * 1000);
+      const username = `${usernameBase}_${uniqueSuffix}`;
+      
       user = await storage.createUser({
-        username: email.split('@')[0], // Use part before @ as username
+        username: username,
         email: email,
         password: null, // No password for social login
         fullName: name || 'Google User',
         isEmailVerified: true, // Email is verified by Google
         isPhoneVerified: false,
         providerId: 'google',
-        providerAccountId: payload.sub // Google's user ID
+        providerAccountId: payload.sub, // Google's user ID
+        balance: 0 // Start with zero balance
       });
       
       console.log(`Created new user from Google auth: ${email}`);
