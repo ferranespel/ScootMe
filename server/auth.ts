@@ -54,6 +54,8 @@ export function setupAuth(app: Express) {
         clientID: process.env.GOOGLE_CLIENT_ID!,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
         callbackURL: "/api/auth/google/callback",
+        // Also support absolute URL for callback
+        // callbackURL: "https://5cbd68a1-637a-418b-8c2b-83865e90c498-00-3j5vvubqvjvlw.kirk.replit.dev/api/auth/google/callback",
         scope: ["profile", "email"],
         // Add additional parameters to help with the redirect URI issue
         proxy: true,
@@ -200,7 +202,15 @@ export function setupAuth(app: Express) {
   
   // Google OAuth routes
   app.get("/api/auth/google", (req, res, next) => {
-    console.log("Google OAuth request received. Replit hostname:", req.hostname);
+    // Detailed logging of the request
+    console.log("Google OAuth request received:", {
+      hostname: req.hostname,
+      protocol: req.protocol,
+      originalUrl: req.originalUrl,
+      headers: req.headers,
+      fullUrl: `${req.protocol}://${req.get('host')}${req.originalUrl}`
+    });
+    
     passport.authenticate("google", { 
       scope: ["profile", "email"],
       // Add additional options to help debug
@@ -211,7 +221,16 @@ export function setupAuth(app: Express) {
   app.get(
     "/api/auth/google/callback",
     (req, res, next) => {
-      console.log("Google OAuth callback received:", req.url);
+      // Detailed logging of the callback
+      console.log("Google OAuth callback received:", {
+        url: req.url,
+        hostname: req.hostname,
+        protocol: req.protocol,
+        headers: req.headers,
+        query: req.query,
+        fullUrl: `${req.protocol}://${req.get('host')}${req.originalUrl}`
+      });
+      
       passport.authenticate("google", { 
         failureRedirect: "/auth",
         failWithError: true
@@ -223,8 +242,14 @@ export function setupAuth(app: Express) {
       res.redirect("/");
     },
     (err, req, res, next) => {
-      // Error handler
+      // Error handler with detailed error information
       console.error("Google OAuth error:", err);
+      console.error("Error details:", {
+        message: err.message,
+        stack: err.stack,
+        code: err.code,
+        statusCode: err.statusCode
+      });
       res.redirect("/auth?error=google-auth-failed");
     }
   );
