@@ -76,6 +76,11 @@ const translation = {
     sendingCode: "Sending verification code...",
     backToPhoneEntry: "Back to phone entry",
     termsText: "By signing in, you agree to our Terms of Service and Privacy Policy",
+    phoneLoginTitle: "Login with your phone",
+    phoneLoginDescription: "We'll send a verification code to your phone",
+    smsRatesApply: "Standard SMS rates may apply",
+    codeSentTo: "Code sent to",
+    codeExpiry: "Code expires in 10 minutes",
   },
 
   // Profile and user settings

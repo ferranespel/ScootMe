@@ -144,9 +144,6 @@ export default function AuthPage() {
                 )}
                 <span>{t('auth.continueWithGoogle')}</span>
               </Button>
-              <p className="text-xs text-amber-600 text-center mt-1">
-                Testing Google Sign-In to find the correct domain to authorize
-              </p>
             </div>
             
             <div className="relative flex items-center justify-center">
@@ -162,8 +159,8 @@ export default function AuthPage() {
             {phoneStep === "phoneEntry" ? (
               <form onSubmit={phoneForm.handleSubmit(onPhoneLoginSubmit)} className="space-y-4">
                 <div className="text-center mb-2">
-                  <h3 className="text-lg font-medium">{t('auth.phoneLoginTitle') || 'Login with your phone'}</h3>
-                  <p className="text-sm text-gray-500">{t('auth.phoneLoginDescription') || 'We\'ll send a verification code to your phone'}</p>
+                  <h3 className="text-lg font-medium">{t('auth.phoneLoginTitle')}</h3>
+                  <p className="text-sm text-gray-500">{t('auth.phoneLoginDescription')}</p>
                 </div>
                 
                 <div className="bg-gray-50 p-4 rounded-lg">
@@ -199,22 +196,22 @@ export default function AuthPage() {
                 </Button>
                 
                 <p className="text-xs text-center text-gray-500">
-                  {t('auth.smsRatesApply') || 'Standard SMS rates may apply'}
+                  {t('auth.smsRatesApply')}
                 </p>
               </form>
             ) : (
               <form onSubmit={verificationForm.handleSubmit(onVerificationSubmit)} className="space-y-4">
                 <div className="text-center mb-4">
-                  <h3 className="text-lg font-medium">{t('auth.enterVerificationCode') || 'Enter verification code'}</h3>
+                  <h3 className="text-lg font-medium">{t('auth.enterVerificationCode')}</h3>
                   <p className="text-sm text-gray-500">
-                    {t('auth.codeSentTo') || 'Code sent to'} <span className="font-medium">{phoneNumber}</span>
+                    {t('auth.codeSentTo')} <span className="font-medium">{phoneNumber}</span>
                   </p>
                 </div>
                 
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="space-y-2">
                     <Label htmlFor="verification-code" className="text-center block">
-                      {t('auth.verificationCode') || 'Verification code'}
+                      {t('auth.verificationCode')}
                     </Label>
                     <Input
                       id="verification-code"
@@ -225,7 +222,7 @@ export default function AuthPage() {
                       {...verificationForm.register("code")}
                     />
                     <p className="text-xs text-center text-gray-500">
-                      {t('auth.codeExpiry') || 'Code expires in 10 minutes'}
+                      {t('auth.codeExpiry')}
                     </p>
                   </div>
                 </div>
@@ -238,10 +235,10 @@ export default function AuthPage() {
                   {phoneVerifyMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      <span>{t('auth.verifying') || 'Verifying...'}</span>
+                      <span>{t('auth.verifying')}</span>
                     </>
                   ) : (
-                    t('auth.verify') || 'Verify'
+                    t('auth.verify')
                   )}
                 </Button>
                 
@@ -253,7 +250,7 @@ export default function AuthPage() {
                     className="w-full" 
                     onClick={() => setPhoneStep("phoneEntry")}
                   >
-                    {t('auth.backToPhoneEntry') || 'Use a different phone number'}
+                    {t('auth.backToPhoneEntry')}
                   </Button>
                   
                   <Button
@@ -272,7 +269,7 @@ export default function AuthPage() {
                     {phoneLoginMutation.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-1" />
                     ) : null}
-                    {t('auth.resendCode') || 'Resend code'}
+                    {t('auth.resendCode')}
                   </Button>
                 </div>
               </form>
