@@ -257,12 +257,29 @@ async function sendUserDataToBackend(user, token) {
   try {
     console.log("Sending user data to backend...");
     
+    // Store the email for future login hints
+    if (user.email) {
+      localStorage.setItem('last_login_email', user.email);
+    }
+    
+    // Log all fields except token for debugging
+    console.log("User data being sent:", {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL ? "Yes" : "No",
+      domain: window.location.hostname,
+      origin: window.location.origin
+    });
+    
     const response = await apiRequest("POST", "/api/auth/firebase/google", {
       token: token,
       uid: user.uid,
       email: user.email,
       displayName: user.displayName,
-      photoURL: user.photoURL
+      photoURL: user.photoURL,
+      domain: window.location.hostname, // Send domain info for logging
+      origin: window.location.origin     // Send origin for better debugging
     });
     
     if (!response.ok) {

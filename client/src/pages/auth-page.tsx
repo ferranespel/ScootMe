@@ -21,6 +21,8 @@ import { FcGoogle } from "react-icons/fc";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/language-selector";
 import { PhoneInput } from "@/components/phone-input";
+import { checkRedirectResult } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AuthPage() {
   const { t } = useTranslation();
@@ -71,12 +73,45 @@ export default function AuthPage() {
     googleLoginMutation.mutate();
   };
 
-  // Redirect if already logged in
+  const { toast } = useToast();
+
+  // Check for Firebase redirect result and handle logged in status
   useEffect(() => {
+    // If already authenticated, redirect to home page
     if (user) {
       navigate("/");
+      return;
     }
-  }, [user, navigate]);
+
+    // Check for Firebase redirect result
+    const checkFirebaseRedirect = async () => {
+      try {
+        // This will check if we're being redirected back from Firebase
+        const user = await checkRedirectResult();
+        
+        if (user) {
+          console.log("Successfully authenticated with Firebase");
+          toast({
+            title: "Login successful",
+            description: "Welcome back!",
+          });
+          navigate("/");
+        } else {
+          // No redirect result, normal page load
+          console.log("No Firebase redirect result found");
+        }
+      } catch (error: any) {
+        console.error("Firebase redirect error:", error);
+        toast({
+          title: "Authentication failed",
+          description: error.message || "Failed to log in with Google",
+          variant: "destructive",
+        });
+      }
+    };
+
+    checkFirebaseRedirect();
+  }, [user, navigate, toast]);
 
   if (isLoading) {
     return (

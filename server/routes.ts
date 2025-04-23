@@ -780,19 +780,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Firebase Google auth endpoint called with body:", {
         ...req.body,
-        token: req.body.token ? "PRESENT" : "MISSING" // Don't log the token
+        token: req.body.token ? "PRESENT" : "MISSING", // Don't log the token
+        domain: req.body.domain || "unknown-domain",
+        origin: req.body.origin || "unknown-origin"
       });
       
-      const { uid, email, displayName, photoURL } = req.body;
+      const { uid, email, displayName, photoURL, domain, origin } = req.body;
       
       if (!email) {
         console.error("Firebase auth failed: Email is required but was missing");
         return res.status(400).json({ message: "Email is required" });
       }
       
-      console.log(`Looking up user with Firebase ID: ${uid}`);
-      // Check if user already exists with this Google ID
+      console.log(`Authentication request from domain: ${domain}, origin: ${origin}`);
+      console.log(`Looking up user with Firebase ID: ${uid} and email: ${email}`);
+      
+      // Try finding user by Firebase ID first
       let user = await storage.getUserByProviderId("firebase", uid);
+      
+      // If not found by provider ID, try by email as fallback
+      if (!user) {
+        console.log(`User not found by Firebase ID, trying email lookup: ${email}`);
+        user = await storage.getUserByEmail(email);
+      }
       
       if (!user) {
         // Create new user
