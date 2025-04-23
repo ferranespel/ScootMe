@@ -13,6 +13,7 @@ import {
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { getGoogleAuthUrl, handleGoogleCallback } from "./google-auth";
+import { handleGoogleAuth } from "./google-auth-handler";
 import { scrypt, timingSafeEqual, randomBytes } from "crypto";
 import { promisify } from "util";
 import {
@@ -75,6 +76,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Google OAuth callback handler
   app.get("/api/auth/google/callback", handleGoogleCallback);
+  
+  // New Firebase Google authentication endpoint
+  app.post("/api/auth/google", handleGoogleAuth);
   
   // Phone authentication routes
   app.post("/api/auth/phone/login", async (req, res) => {
