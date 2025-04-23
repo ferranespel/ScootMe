@@ -17,13 +17,18 @@ let auth: any;
 let googleProvider: any;
 
 try {
-  // Log the exact values to debug
+  // Log the exact values and domain to debug
   console.log("Firebase config:", {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
     appId: import.meta.env.VITE_FIREBASE_APP_ID,
   });
+  
+  // Log the current domain for Firebase authorization
+  console.log("Current domain:", window.location.hostname);
+  console.log("Full URL:", window.location.href);
+  console.log("Origin:", window.location.origin);
   
   if (!import.meta.env.VITE_FIREBASE_API_KEY) {
     throw new Error("Firebase API key is missing");

@@ -133,15 +133,19 @@ export default function AuthPage() {
             <div className="grid gap-4">
               <Button 
                 variant="outline" 
-                className="flex items-center justify-center gap-2 h-12 opacity-50"
-                disabled={true}
-                title="Google Sign-In requires additional configuration"
+                className="flex items-center justify-center gap-2 h-12"
+                onClick={handleGoogleLogin}
+                disabled={googleLoginMutation.isPending}
               >
-                <FcGoogle className="h-5 w-5" />
+                {googleLoginMutation.isPending ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <FcGoogle className="h-5 w-5" />
+                )}
                 <span>{t('auth.continueWithGoogle')}</span>
               </Button>
-              <p className="text-xs text-gray-500 text-center mt-1">
-                Google Sign-In not available in development environment
+              <p className="text-xs text-amber-600 text-center mt-1">
+                Testing Google Sign-In to find the correct domain to authorize
               </p>
             </div>
             
