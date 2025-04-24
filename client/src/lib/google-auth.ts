@@ -1,56 +1,28 @@
-import { initializeApp } from "firebase/app";
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
-  signInWithRedirect,
-  getRedirectResult
-} from "firebase/auth";
+/**
+ * Direct Google OAuth authentication
+ * Using Passport.js on the backend instead of Firebase
+ */
 import { apiRequest } from "./queryClient";
 
-// Simple Firebase configuration
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
-
-// Initialize Firebase
-let app, auth, provider;
-
-try {
-  console.log("Initializing Firebase with:", {
-    apiKey: firebaseConfig.apiKey,
-    authDomain: firebaseConfig.authDomain,
-    projectId: firebaseConfig.projectId,
-  });
-  
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  provider = new GoogleAuthProvider();
-  
-  // Configure provider
-  provider.addScope('email');
-  provider.addScope('profile');
-  
-  console.log("Firebase initialized");
-} catch (error) {
-  console.error("Firebase initialization error:", error);
-}
+// Log for debugging
+console.log("Using Direct Passport.js OAuth flow for Google authentication");
 
 /**
- * Sign in with Google
- * Uses redirect for better mobile compatibility
+ * Sign in with Google using Passport.js
+ * Uses redirect to server OAuth endpoint
  */
 export async function signInWithGoogle() {
-  if (!auth || !provider) {
-    throw new Error("Firebase auth not initialized");
-  }
-
   try {
-    // Always use redirect for better cross-platform compatibility
-    await signInWithRedirect(auth, provider);
+    // Store current path for potential return after auth
+    const currentPath = window.location.pathname;
+    localStorage.setItem('auth_redirect_from', currentPath);
+    localStorage.setItem('auth_timestamp', Date.now().toString());
+    
+    console.log("Starting direct Google OAuth flow with Passport.js");
+    
+    // Redirect to our backend OAuth endpoint
+    window.location.href = "/api/auth/google";
+    
     return null; // This won't execute as the page will redirect
   } catch (error) {
     console.error("Google sign-in error:", error);
@@ -59,44 +31,74 @@ export async function signInWithGoogle() {
 }
 
 /**
- * Handle redirect result
+ * Handle redirect result after Google OAuth
  * Call this when the app loads to check if we're returning from a redirect
  */
 export async function handleRedirectResult() {
-  if (!auth) {
-    throw new Error("Firebase auth not initialized");
-  }
-
   try {
-    console.log("Checking for redirect result...");
-    const result = await getRedirectResult(auth);
+    console.log("Checking for Passport.js OAuth redirect result...");
     
-    if (!result) {
-      console.log("No redirect result found");
-      return null;
+    // Check for success or error query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const authSuccess = urlParams.get('success');
+    const authError = urlParams.get('error');
+    
+    // Handle error case
+    if (authError) {
+      console.error("OAuth error from query params:", authError);
+      throw new Error(`Authentication error: ${authError}`);
     }
     
-    console.log("Got redirect result:", result.user.email);
-    
-    // Get authentication data
-    const user = result.user;
-    const token = await user.getIdToken();
-    
-    // Call backend to create or log in the user
-    const response = await apiRequest("POST", "/api/auth/google", {
-      token,
-      email: user.email,
-      name: user.displayName,
-      photoUrl: user.photoURL
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
+    // Handle success case
+    if (authSuccess === 'true') {
+      console.log("OAuth success detected in URL parameters");
+      
+      // Fetch the current user from the server
+      const response = await fetch('/api/user', { 
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to get user data: ${response.status}`);
+      }
+      
+      const userData = await response.json();
+      console.log("Got authenticated user data:", userData.email);
+      
+      // Clean up URL by removing auth params
+      if (window.history && window.history.replaceState) {
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+      
+      return userData;
     }
     
-    return await response.json();
+    // Also check if we've been redirected recently (within last 5 seconds)
+    const lastAuthTime = Number(localStorage.getItem('auth_timestamp') || '0');
+    const timeSinceAuth = Date.now() - lastAuthTime;
+    
+    if (lastAuthTime && timeSinceAuth < 5000) {
+      console.log("Recent OAuth redirect detected, checking authentication status");
+      
+      // Check if we're authenticated by fetching user data
+      const response = await fetch('/api/user', { 
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        console.log("Successfully fetched user data after redirect");
+        return userData;
+      }
+    }
+    
+    console.log("No OAuth redirect result found");
+    return null;
   } catch (error) {
-    console.error("Error handling redirect:", error);
+    console.error("Error handling OAuth redirect:", error);
     throw error;
   }
 }
