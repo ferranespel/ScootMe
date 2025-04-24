@@ -46,34 +46,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
   
-  // Check for Firebase redirect result when component mounts
+  // Check for Firebase redirect result and localStorage when component mounts
   useEffect(() => {
-    const checkRedirect = async () => {
+    const checkAuthState = async () => {
       try {
+        // First check if we have a current user - if so, no need to restore from localStorage
+        if (user) {
+          console.log("User already authenticated via session");
+          return;
+        }
+
         // Dynamically import to avoid loading Firebase on every page
         const { checkRedirectResult } = await import("@/lib/firebase");
         const userData = await checkRedirectResult();
         
         if (userData) {
           // If we got user data from a redirect, update the auth state
+          console.log("Found user from redirect, updating auth state");
           queryClient.setQueryData(["/api/user"], userData);
           toast({
             title: "Login successful",
             description: `Welcome to ScootMe, ${userData.fullName}!`,
           });
+          return;
+        }
+        
+        // If no redirect result, check localStorage as a fallback
+        try {
+          const storedUserJson = localStorage.getItem('auth_user');
+          if (storedUserJson) {
+            const storedUser = JSON.parse(storedUserJson);
+            
+            if (storedUser && storedUser.id && storedUser.email) {
+              console.log("Restoring user from localStorage");
+              
+              // Verify the user's session is still valid by making an API call
+              try {
+                const res = await fetch('/api/user', { credentials: 'include' });
+                if (res.ok) {
+                  // Session is still valid, use the latest user data
+                  const latestUserData = await res.json();
+                  queryClient.setQueryData(["/api/user"], latestUserData);
+                  console.log("User session verified and restored");
+                } else {
+                  // Session expired, but we can try to use the stored user to re-authenticate
+                  console.log("Session expired, trying to reuse stored auth credentials");
+                  queryClient.setQueryData(["/api/user"], storedUser);
+                  
+                  // Silently trigger a refetch to confirm this user is still valid
+                  refetch();
+                }
+              } catch (apiError) {
+                console.error("Error verifying user session:", apiError);
+                // Still use stored user data but mark for refetch
+                queryClient.setQueryData(["/api/user"], storedUser);
+              }
+            }
+          }
+        } catch (storageError) {
+          console.error("Error reading from localStorage:", storageError);
         }
       } catch (error: any) {
-        console.error("Error handling Firebase redirect:", error);
-        toast({
-          title: "Google login failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        console.error("Error handling authentication state:", error);
       }
     };
     
-    checkRedirect();
-  }, [toast]);
+    checkAuthState();
+  }, [toast, user, refetch]);
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
@@ -81,7 +120,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Update query cache
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Store user in localStorage for persistence across page reloads
+      try {
+        localStorage.setItem('auth_user', JSON.stringify(user));
+        localStorage.setItem('auth_success_timestamp', Date.now().toString());
+      } catch (e) {
+        console.warn("Error storing auth data in localStorage:", e);
+      }
+      
       toast({
         title: "Login successful",
         description: `Welcome back, ${user.fullName}!`,
@@ -102,7 +151,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Update query cache
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Store user in localStorage for persistence across page reloads
+      try {
+        localStorage.setItem('auth_user', JSON.stringify(user));
+        localStorage.setItem('auth_success_timestamp', Date.now().toString());
+      } catch (e) {
+        console.warn("Error storing auth data in localStorage:", e);
+      }
+      
       toast({
         title: "Registration successful",
         description: `Welcome to ScootMe, ${user.fullName}!`,
@@ -122,7 +181,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      // Update the query cache
       queryClient.setQueryData(["/api/user"], null);
+      
+      // Clear all authentication data from localStorage
+      try {
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('firebase_auth_success_time');
+        localStorage.removeItem('auth_success_timestamp');
+        console.log("Cleared authentication data from localStorage");
+      } catch (e) {
+        console.warn("Error clearing auth data from localStorage:", e);
+      }
+      
       toast({
         title: "Logged out",
         description: "You have been successfully logged out.",

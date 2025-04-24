@@ -217,6 +217,25 @@ export async function checkRedirectResult() {
       console.log("Firebase authentication not initialized, skipping Firebase redirect check");
     }
     
+    // Check for stored user in localStorage (from previous auth)
+    try {
+      const storedUser = localStorage.getItem('auth_user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        console.log("Found authenticated user data in localStorage");
+        
+        // Check if the stored data has the expected fields to avoid using corrupted data
+        if (userData && userData.id && userData.email) {
+          console.log("Restoring user session from localStorage");
+          return userData;
+        } else {
+          console.log("Stored user data is incomplete, not restoring session");
+        }
+      }
+    } catch (e) {
+      console.warn("Error restoring user from localStorage:", e);
+    }
+    
     return null;
   } catch (error) {
     console.error("Redirect result error:", error instanceof Error ? error.message : String(error));
@@ -518,6 +537,15 @@ async function sendUserDataToBackend(user: any, token: string | undefined, direc
         
         // Store additional data for session recovery in case of page reload
         localStorage.setItem('auth_success_timestamp', Date.now().toString());
+        
+        // Store authenticated user in localStorage to restore on page changes/reloads
+        // This helps with maintaining the user state across redirects
+        try {
+          localStorage.setItem('auth_user', JSON.stringify(userData));
+          console.log("Stored authenticated user data in localStorage");
+        } catch (e) {
+          console.warn("Failed to store user data in localStorage:", e);
+        }
         
         return userData;
       } catch (error) {
