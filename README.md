@@ -2,74 +2,82 @@
 
 A cutting-edge urban mobility platform delivering intelligent scooter rental experiences across multiple cities, focusing on user engagement and sustainable transportation.
 
-## Current Status
+## Running the Application
 
-The application is currently running on port 5000 and functioning properly. The Replit UI Run button may not be working, but the application is accessible via the URL.
+### Using the Run Button in Replit
 
-## Accessing the Application
+When you click the **Run** button in Replit, a preview server will start on port 8080. This preview server provides links to access the main application running on port 5000.
 
-You can access the application at:
-- Main URL: https://workspace.ferransson.repl.co
-- Auth Page: https://workspace.ferransson.repl.co/auth
-- Auth Test: https://workspace.ferransson.repl.co/auth-test
+The preview page includes direct links to:
+- Main Application
+- Authentication Page
+- Authentication Test Page
 
-## Checking Server Status
+### Accessing the Application Directly
 
-To verify that the server is running properly, you can run:
-```
-node check-server.cjs
-```
+The main application runs on port 5000. You can access it directly at:
+- https://[repl-name].[username].repl.co
+- http://localhost:5000 (when running locally)
 
-## Opening the Application
+## Key Features
 
-To get the application URLs and attempt to open it in a browser tab:
-```
-node open-app.cjs
-```
-
-## Authentication Methods
-
-The application supports multiple authentication methods:
-- Phone authentication via Twilio SMS with "ScootMe" sender ID
-- Google authentication via direct OAuth integration
-- Firebase authentication with localStorage persistence
-
-## Tech Stack
-
-- **Frontend:** React, TypeScript, Tailwind CSS, shadcn/ui
-- **Backend:** Express.js, Node.js
-- **Database:** In-memory storage (resets on server restart)
-- **Authentication:** Passport.js, Firebase, Twilio
-- **Maps:** Google Maps API
-- **Real-time Communication:** WebSockets
-- **Payment Processing:** Stripe
+- **User Authentication**: Multiple authentication methods including email/password, Google OAuth, and phone verification via SMS
+- **Scooter Rental**: Intuitive interface for finding, unlocking, and returning scooters
+- **Real-time Tracking**: Live tracking of scooters with GPS integration
+- **Payment Processing**: Secure payment processing with Stripe
+- **Administrative Controls**: Backend management system for fleet operators
 
 ## Geographic Focus
 
-The application focuses on the Greater Reykjavik area in Iceland, with special emphasis on the Kársnes area.
+The service primarily operates in Greater Reykjavik, Iceland, with special emphasis on neighborhoods:
+- Kópavogur
+- Árbær
+- Grafavogur
+- Laugadalur
+- Kársnes (special fleet)
 
-## Fleet Information
+## Technical Stack
 
-The platform manages 275 scooters:
-- 250 general scooters
-- 25 Kársnes-specific scooters with K-prefixed IDs
+### Frontend
+- React with TypeScript
+- TailwindCSS with ShadCN components
+- Wouter for routing
+- TanStack Query for data fetching
+- i18next for internationalization
 
-## Internationalization
+### Backend
+- Express.js server with TypeScript
+- WebSocket for real-time communication
+- PostgreSQL database with Drizzle ORM
+- Firebase authentication
+- Twilio for SMS verification
 
-The application supports multiple languages:
-- English
-- Spanish
-- Icelandic
+### Deployment
+- Replit hosting
+- Custom domain configuration
+
+## Development
+
+The project structure follows a client-server architecture:
+- `/client`: Frontend React application
+- `/server`: Backend Express.js API
+- `/shared`: Shared types and schemas
+
+## Authentication Methods
+
+The system supports multiple authentication methods:
+- Email/Password (with verification)
+- Google OAuth (direct integration using Passport.js)
+- Phone number verification (using Twilio SMS)
 
 ## Deployment
 
-The application can be deployed to:
-- Replit domains (currently at scoot-me-ferransson.replit.app)
-- Custom domains (currently at scootme.ferransson.com)
+The application is deployed and accessible at:
+- scoot-me-ferransson.replit.app
+- scootme.ferransson.com
 
-## Running Locally
+## Testing Credentials
 
-If the Replit workflow is not working, you can manually start the server:
-```
-./start-server.sh
-```
+For testing authentication:
+- Email: ferransson@gmail.com
+- Phone: +354 774 12 74

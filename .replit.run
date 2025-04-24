@@ -1,1 +1,1 @@
-./run.sh
+node run-button.cjs
