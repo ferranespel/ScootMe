@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { execSync } from 'child_process';
 
 const app = express();
 app.use(express.json());
@@ -37,8 +38,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Use the PORT environment variable to match deployment configuration
-  const port = process.env.PORT || 3000;
+  // Use PORT environment variable if set, otherwise default to 5000
+  const port = process.env.PORT || 5000;
   console.log(`Starting server on port ${port}`);
 
   // Directly start the application with minimal overhead
@@ -59,12 +60,42 @@ app.use((req, res, next) => {
       serveStatic(app);
     }
     
-    // Start server on the port required by Replit
+    // Start server on port 5000 directly 
     server.listen({
       port: Number(port),
       host: "0.0.0.0",
     }, () => {
       log(`Server running on port ${port}`);
+    }).on('error', (err: any) => {
+      // If the port is already in use, try to force close it and retry
+      if (err.code === 'EADDRINUSE') {
+        console.log(`Port ${port} is already in use, attempting to free it...`);
+        
+        // Try to forcefully kill any process using the port
+        try {
+          // Get and kill the process using port 5000
+          const pid = execSync(`lsof -t -i:${port}`).toString().trim();
+          if (pid) {
+            console.log(`Killing process ${pid} that's using port ${port}...`);
+            execSync(`kill -9 ${pid}`);
+            
+            // Try listening again after a short delay
+            setTimeout(() => {
+              server.listen({
+                port: Number(port),
+                host: "0.0.0.0",
+              }, () => {
+                log(`Server running on port ${port} after retry`);
+              });
+            }, 1000);
+          }
+        } catch (execError) {
+          console.error('Failed to kill process using the port:', execError);
+          console.error('Server failed to start:', err);
+        }
+      } else {
+        console.error('Server failed to start:', err);
+      }
     });
   } catch (error) {
     console.error("Failed to start server:", error);

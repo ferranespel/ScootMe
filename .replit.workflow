@@ -1,5 +1,5 @@
 [workflow.start_application]
-command = "./startup.sh"
+command = "node workflow-starter.js"
 startExplorer = false
 openIn = "left"
 restartOn = {"fileChange": false, "fileCreate": false}

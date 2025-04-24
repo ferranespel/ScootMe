@@ -1,10 +1,11 @@
 
 run = "npm run start"
 hidden = [".config", "package-lock.json"]
+80modules = ["nodejs-20"]
 modules = ["nodejs-20"]
 
 [env]
-PORT = "3000"
+PORT = "5000"
 NODE_ENV = "production"
 
 [nix]
@@ -18,10 +19,6 @@ ignorePorts = false
 [[ports]]
 localPort = 3000
 externalPort = 80
-
-[[ports]]
-localPort = 5000
-externalPort = 5000
 
 [workflows]
 runButton = "Start Dev Server"
