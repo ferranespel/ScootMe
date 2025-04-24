@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Start the port 5000 listener first (in background)
-node port-listener.cjs &
-
-# Then start the main app on port 3000
-npm run dev
+# Use the wrapper script to ensure port 5000 is active immediately
+# This is required for Replit deployment compatibility
+node startup-wrapper.js

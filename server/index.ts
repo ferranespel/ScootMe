@@ -37,9 +37,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Use the port from environment variable or default to 3000 for Replit compatibility
-  const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
-  console.log(`Starting server on port ${port} (using PORT env variable or default)`);
+  // Use the PORT environment variable to match deployment configuration
+  const port = process.env.PORT || 3000;
+  console.log(`Starting server on port ${port}`);
 
   // Directly start the application with minimal overhead
   try {
