@@ -775,74 +775,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create HTTP server
-  // Add Firebase authentication route
-  app.post("/api/auth/firebase/google", async (req, res) => {
-    try {
-      console.log("Firebase Google auth endpoint called with body:", {
-        ...req.body,
-        token: req.body.token ? "PRESENT" : "MISSING", // Don't log the token
-        domain: req.body.domain || "unknown-domain",
-        origin: req.body.origin || "unknown-origin"
-      });
-      
-      const { uid, email, displayName, photoURL, domain, origin } = req.body;
-      
-      if (!email) {
-        console.error("Firebase auth failed: Email is required but was missing");
-        return res.status(400).json({ message: "Email is required" });
-      }
-      
-      console.log(`Authentication request from domain: ${domain}, origin: ${origin}`);
-      console.log(`Looking up user with Firebase ID: ${uid} and email: ${email}`);
-      
-      // Try finding user by Firebase ID first
-      let user = await storage.getUserByProviderId("firebase", uid);
-      
-      // If not found by provider ID, try by email as fallback
-      if (!user) {
-        console.log(`User not found by Firebase ID, trying email lookup: ${email}`);
-        user = await storage.getUserByEmail(email);
-      }
-      
-      if (!user) {
-        // Create new user
-        const username = `${(displayName || email.split('@')[0]).toLowerCase().replace(/\s+/g, '_')}_${Math.floor(Math.random() * 1000)}`;
-        
-        user = await storage.createUser({
-          username,
-          email,
-          fullName: displayName || username,
-          password: null, // No password for OAuth users
-          profilePicture: photoURL || null,
-          providerId: "firebase",
-          providerAccountId: uid,
-          isEmailVerified: true // Email is verified through Google
-        });
-      }
-      
-      // Log the user in
-      console.log("Attempting to login user:", { 
-        userId: user.id, 
-        username: user.username, 
-        email: user.email 
-      });
-      
-      req.login(user, (err) => {
-        if (err) {
-          console.error("Login failed in req.login:", err);
-          return res.status(500).json({ message: "Login failed", error: err.message });
-        }
-        
-        // Return user without password
-        const { password, ...userWithoutPassword } = user;
-        console.log("Firebase authentication successful, returning user data");
-        return res.status(200).json(userWithoutPassword);
-      });
-    } catch (error: any) {
-      console.error("Firebase auth error:", error);
-      res.status(500).json({ message: "Authentication failed", error: error.message });
-    }
-  });
+  // Add Firebase authentication route - use our enhanced handler for better reliability
+  app.post("/api/auth/firebase/google", handleGoogleAuth);
   
   const httpServer = createServer(app);
   return httpServer;
