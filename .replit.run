@@ -1,1 +1,1 @@
-node preview-server.cjs
+./run.sh

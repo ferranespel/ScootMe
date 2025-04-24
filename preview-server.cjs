@@ -12,7 +12,8 @@ const http = require('http');
 const { exec } = require('child_process');
 
 // Port for this preview server (not the main app)
-const PREVIEW_PORT = process.env.PORT || 8080;
+// We explicitly use 8080 and not environment variables to avoid conflicts
+const PREVIEW_PORT = 8080;
 const MAIN_APP_PORT = 5000;
 
 // Function to check if the main server is running
