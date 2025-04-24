@@ -2,82 +2,73 @@
 
 A cutting-edge urban mobility platform delivering intelligent scooter rental experiences across multiple cities, focusing on user engagement and sustainable transportation.
 
-## Running the Application
+## Quick Start
 
-### Using the Run Button in Replit
+To start the application, run one of these commands in your terminal:
 
-When you click the **Run** button in Replit, a preview server will start on port 8080. This preview server provides links to access the main application running on port 5000.
+```bash
+# Option 1: Start with standard development server
+npm run dev
 
-The preview page includes direct links to:
-- Main Application
-- Authentication Page
-- Authentication Test Page
+# Option 2: Start with enhanced logging and auto port management
+node start-app.cjs
+```
 
-### Accessing the Application Directly
+## Available URLs
 
-The main application runs on port 5000. You can access it directly at:
-- https://[repl-name].[username].repl.co
-- http://localhost:5000 (when running locally)
+- **Local Development**: [https://workspace--ferransson.repl.co](https://workspace--ferransson.repl.co)
+- **Production**: [https://scoot-me-ferransson.replit.app](https://scoot-me-ferransson.replit.app)
+- **Custom Domain**: [https://scootme.ferransson.com](https://scootme.ferransson.com)
 
-## Key Features
+## Test Credentials
 
-- **User Authentication**: Multiple authentication methods including email/password, Google OAuth, and phone verification via SMS
-- **Scooter Rental**: Intuitive interface for finding, unlocking, and returning scooters
-- **Real-time Tracking**: Live tracking of scooters with GPS integration
-- **Payment Processing**: Secure payment processing with Stripe
-- **Administrative Controls**: Backend management system for fleet operators
+- **Email**: ferransson@gmail.com
+- **Phone**: +354 774 12 74
+
+## Technology Stack
+
+- **Frontend**: React with TypeScript, Shadcn UI
+- **Backend**: Express.js
+- **Database**: In-memory storage (MemStorage)
+- **Authentication**:
+  - Email/Password
+  - Phone (via Twilio SMS)
+  - Google OAuth
+
+## Project Structure
+
+- `client/` - Frontend React application
+- `server/` - Backend Express.js server
+- `shared/` - Shared TypeScript types and utilities
+
+## Authentication Flow
+
+Multiple authentication methods are supported:
+
+1. **Email/Password**: Traditional username/password authentication
+2. **Phone Authentication**: SMS verification via Twilio
+3. **Google OAuth**: Single Sign-On with Google account
+
+## Scooter Fleet
+
+- 275 total scooters available
+- 250 general scooters
+- 25 Kársnes-specific scooters (with K-prefixed IDs)
 
 ## Geographic Focus
 
-The service primarily operates in Greater Reykjavik, Iceland, with special emphasis on neighborhoods:
+The application focuses on the Greater Reykjavik area in Iceland, with special emphasis on:
+
 - Kópavogur
 - Árbær
 - Grafavogur
 - Laugadalur
-- Kársnes (special fleet)
+- Kársnes (special emphasis)
 
-## Technical Stack
+## Internationalization
 
-### Frontend
-- React with TypeScript
-- TailwindCSS with ShadCN components
-- Wouter for routing
-- TanStack Query for data fetching
-- i18next for internationalization
+The application supports the following languages:
 
-### Backend
-- Express.js server with TypeScript
-- WebSocket for real-time communication
-- PostgreSQL database with Drizzle ORM
-- Firebase authentication
-- Twilio for SMS verification
-
-### Deployment
-- Replit hosting
-- Custom domain configuration
-
-## Development
-
-The project structure follows a client-server architecture:
-- `/client`: Frontend React application
-- `/server`: Backend Express.js API
-- `/shared`: Shared types and schemas
-
-## Authentication Methods
-
-The system supports multiple authentication methods:
-- Email/Password (with verification)
-- Google OAuth (direct integration using Passport.js)
-- Phone number verification (using Twilio SMS)
-
-## Deployment
-
-The application is deployed and accessible at:
-- scoot-me-ferransson.replit.app
-- scootme.ferransson.com
-
-## Testing Credentials
-
-For testing authentication:
-- Email: ferransson@gmail.com
-- Phone: +354 774 12 74
+- English
+- Spanish
+- Icelandic
