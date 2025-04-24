@@ -95,7 +95,10 @@ export async function checkRedirectResult() {
     console.log("Current origin:", window.location.origin);
     
     // Determine if we're on a Replit domain
-    const isReplitDomain = window.location.hostname.includes('replit');
+    const isReplitDomain = window.location.hostname.includes('replit') || 
+                         window.location.hostname.includes('repl.co') || 
+                         window.location.hostname.includes('kirk.replit') ||
+                         window.location.hostname.includes('.id.repl');
     
     // Special handling for custom domain
     const isCustomDomain = window.location.hostname === "scootme.ferransson.com";
@@ -243,7 +246,11 @@ export async function signInWithGoogle() {
     
     // Get the current domain for the auth request
     const currentDomain = window.location.hostname;
-    const isReplitDomain = currentDomain.includes('replit');
+    // Check for both replit.dev and repl.co domains
+    const isReplitDomain = currentDomain.includes('replit') || 
+                          currentDomain.includes('repl.co') || 
+                          currentDomain.includes('kirk.replit') ||
+                          currentDomain.includes('.id.repl');
     
     // Detect if running on mobile (but we're forcing redirect for all devices right now)
     const isMobile = forceMobileFlow || isCustomDomain || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -411,7 +418,10 @@ export async function signInWithGoogle() {
  */
 async function sendUserDataToBackend(user: any, token: string | undefined, directOAuth: boolean = false) {
   const isCustomDomain = window.location.hostname === "scootme.ferransson.com";
-  const isReplitDomain = window.location.hostname.includes('replit');
+  const isReplitDomain = window.location.hostname.includes('replit') || 
+                        window.location.hostname.includes('repl.co') || 
+                        window.location.hostname.includes('kirk.replit') ||
+                        window.location.hostname.includes('.id.repl');
   
   try {
     console.log("Sending user data to backend...", directOAuth ? "(Direct OAuth)" : "(Firebase)");

@@ -1,6 +1,4 @@
-[workflow.start_application]
+[workflow]
+name = "start_app"
 command = "npm run dev"
-startExplorer = false
-openIn = "left"
-restartOn = {"fileChange": false, "fileCreate": false}
-exposePort = 5000
+persistent = true
