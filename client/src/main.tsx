@@ -1,3 +1,20 @@
+// Force cache busting with version check MUST BE FIRST
+const APP_VERSION = "20240424-2"; // Change this version when deploying major updates
+
+// IMPORTANT: Place this script at the very top to immediately block Firebase
+// This script will run immediately before any other JavaScript
+if (typeof window !== 'undefined') {
+  console.log("%c⚠️ INITIALIZING PASSPORT.JS AUTHENTICATION", 
+    "background: #004085; color: white; padding: 10px; font-size: 16px; font-weight: bold; border-radius: 3px;");
+    
+  // Add blocking variables to window object immediately
+  window.__FIREBASE_PERMANENTLY_DISABLED__ = true;
+  window.__USING_PASSPORT_OAUTH__ = true;
+}
+
+// Force immediate loading of the Firebase disabler
+import "@/lib/firebase";
+
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
@@ -5,35 +22,37 @@ import "./index.css";
 // Import i18n (internationalization)
 import "./i18n";
 
-// Force cache busting with version check
-const APP_VERSION = "20240424-1"; // Change this version when deploying major updates
+// Clean localStorage cache if version changed
 const lastVersion = localStorage.getItem('app_version');
 if (lastVersion !== APP_VERSION) {
   // Clear all cached data
   try {
-    // Clear auth cache items
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('firebase_auth_success_time');
-    localStorage.removeItem('auth_success_timestamp');
+    console.log(`Version change detected: ${lastVersion || 'none'} → ${APP_VERSION}`);
     
-    // Update version and force reload to clear JS cache
+    // Aggressively clear all storage
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Set minimal required values
     localStorage.setItem('app_version', APP_VERSION);
-    console.log(`Updated from version ${lastVersion || 'none'} to ${APP_VERSION} - clearing cache`);
     
-    // If there was a previous version, force reload the page to ensure clean state
+    // If previous version existed, force reload with cache busting
     if (lastVersion) {
-      // Add cache-busting parameter to URL before reloading
+      console.log("Performing hard reload to clear cache...");
+      
+      // Add extreme cache-busting parameters
       const url = new URL(window.location.href);
-      url.searchParams.set('cache_bust', Date.now().toString());
+      url.searchParams.set('v', APP_VERSION);
+      url.searchParams.set('t', Date.now().toString());
+      url.searchParams.set('nocache', 'true');
+      
+      // Force reload
       window.location.href = url.toString();
     }
   } catch (e) {
     console.warn("Cache clearing failed:", e);
   }
 }
-
-// Load firebase compatibility layer first - ensures OAuth setup
-import "@/lib/firebase";
 
 // No need to load Google Maps here anymore,
 // it's now handled by the Map component itself

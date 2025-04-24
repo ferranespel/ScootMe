@@ -1,50 +1,111 @@
 /**
- * OAuth authentication compatibility layer
- * This file provides a compatibility layer for code previously using Firebase
- * All authentication now uses direct OAuth with Passport.js
+ * PASSPORT.JS AUTHENTICATION LAYER (NOT FIREBASE)
+ * ===============================================
+ * This file replaces the Firebase authentication with Passport.js OAuth
  * 
- * IMPORTANT: This is now the primary authentication module that should be
- * imported by other modules. It will load the direct-auth module and intercept
- * all the authentication calls to ensure they go through Passport.js.
- * 
- * Version: 20240424-1
+ * VERSION: 20240424-2
+ * IMPORTANT: This file COMPLETELY OVERRIDES any Firebase functionality
+ * DO NOT ATTEMPT TO USE FIREBASE FOR AUTHENTICATION
  */
 
-// Block any attempt to load the real Firebase
-// This overrides the global Firebase namespace to prevent the actual Firebase SDK from initializing
-// @ts-ignore
-window.firebaseIsDisabled = true;
-// @ts-ignore
-window.firebaseBlocker = function() {
-  console.warn("🚫 Firebase initialization attempted but blocked by compatibility layer");
-  return {
-    auth: () => ({
-      onAuthStateChanged: () => {},
-      signInWithRedirect: () => Promise.resolve(null),
-      getRedirectResult: () => Promise.resolve(null)
-    }),
-    // Mock other Firebase services as needed
-    app: () => ({}),
-    firestore: () => ({})
+// This script runs BEFORE any imports to ensure it captures everything
+// Create a script element and execute it immediately to catch Firebase imports
+const disableFirebaseScript = document.createElement('script');
+disableFirebaseScript.textContent = `
+  // Completely disable Firebase imports by overriding the import system
+  const originalImport = window.importScripts;
+  window.__FIREBASE_DISABLED__ = true;
+  
+  // Mock all Firebase modules to prevent any initialization
+  window.firebase = {
+    __DISABLED__: true,
+    initializeApp: function() { 
+      console.error("🛑 BLOCKED: Firebase initialization attempted but prevented by Passport.js layer");
+      return {
+        auth: () => mockAuth,
+        firestore: () => ({ collection: () => ({}) }),
+        __DISABLED__: true
+      };
+    },
+    auth: function() {
+      console.error("🛑 BLOCKED: Firebase auth access attempted but prevented by Passport.js layer");
+      return mockAuth;
+    },
+    app: function() {
+      console.error("🛑 BLOCKED: Firebase app access attempted but prevented by Passport.js layer");
+      return { __DISABLED__: true };
+    }
   };
-};
+  
+  // Mock auth object used to replace Firebase auth
+  const mockAuth = {
+    __DISABLED__: true,
+    onAuthStateChanged: function(callback) { 
+      console.error("🛑 BLOCKED: Firebase onAuthStateChanged attempted but prevented");
+      return () => {}; 
+    },
+    signInWithRedirect: function() { 
+      console.error("🛑 BLOCKED: Firebase signInWithRedirect attempted but prevented");
+      window.location.href = "/api/auth/google";
+      return Promise.resolve(null); 
+    },
+    signInWithPopup: function() { 
+      console.error("🛑 BLOCKED: Firebase signInWithPopup attempted but prevented");
+      window.location.href = "/api/auth/google";
+      return Promise.resolve(null); 
+    },
+    getRedirectResult: function() { 
+      console.error("🛑 BLOCKED: Firebase getRedirectResult attempted but prevented");
+      return Promise.resolve(null); 
+    }
+  };
+  
+  // Block any dynamic imports of Firebase
+  const originalDynamicImport = window.eval;
+  window.eval = function(code) {
+    if (code.includes('firebase') || code.includes('Firebase')) {
+      console.error("🛑 BLOCKED: Attempted dynamic import of Firebase via eval");
+      return null;
+    }
+    return originalDynamicImport.apply(this, arguments);
+  };
+  
+  // Override any ES module loaders that might import Firebase
+  if (window.System && window.System.import) {
+    const originalSystemImport = window.System.import;
+    window.System.import = function(moduleName) {
+      if (moduleName.includes('firebase')) {
+        console.error("🛑 BLOCKED: Attempted System.import of Firebase module:", moduleName);
+        return Promise.resolve({
+          initializeApp: () => ({ __DISABLED__: true }),
+          auth: () => mockAuth
+        });
+      }
+      return originalSystemImport.apply(this, arguments);
+    };
+  }
+  
+  // Show message in console that Firebase is disabled
+  console.warn("%c🔒 SECURITY: Firebase has been completely disabled and replaced with Passport.js OAuth", 
+    "background: #721c24; color: white; padding: 8px; font-size: 14px; font-weight: bold; border-radius: 3px;");
+`;
 
-// If Firebase was already loaded somehow, replace it
-if (typeof window !== 'undefined' && window.hasOwnProperty('firebase')) {
-  console.warn("🚫 Replacing existing Firebase instance with Passport compatibility layer");
-  // @ts-ignore
-  window.firebase = window.firebaseBlocker();
-}
+// Append and execute the script immediately
+document.head.appendChild(disableFirebaseScript);
 
+// Import the actual Passport.js-based authentication
 import { signInWithGoogle as directSignInWithGoogle, checkAuthenticationStatus } from './direct-auth';
 
 /**
- * Log for debugging purposes
- * This maintains log compatibility with previous implementations
+ * Log authentication info
  */
 function logInfo() {
-  // Domain detection logs (for debugging)
-  console.log("DOMAIN DETECTION:", {
+  // LOUDLY announce that we are NOT using Firebase
+  console.log("%c🔐 AUTHENTICATION: Using Passport.js OAuth (NOT Firebase)", 
+    "background: #28a745; color: white; padding: 6px; font-size: 14px; font-weight: bold; border-radius: 3px;");
+  
+  // Domain detection logs (for troubleshooting)
+  console.log("ℹ️ DOMAIN INFO:", {
     hostname: window.location.hostname,
     isCustomDomain: window.location.hostname === "scootme.ferransson.com",
     fullUrl: window.location.href,
@@ -52,22 +113,15 @@ function logInfo() {
     protocol: window.location.protocol
   });
 
-  // Explicitly override Firebase config to prevent it from loading
-  // This should appear in console logs to verify we're NOT using Firebase
-  console.log("Auth config:", {
+  // Authentication configuration
+  console.log("📋 AUTH CONFIG:", {
     provider: "Google OAuth",
     method: "Passport.js",
     directAuth: true,
     usingSession: true,
-    usingFirebase: false
+    usingFirebase: false,
+    version: "20240424-2"
   });
-
-  // Make it very clear in the logs that we're not using Firebase
-  console.log("IMPORTANT: Firebase is DISABLED. Using Passport.js OAuth instead.");
-  console.log("Current domain:", window.location.hostname);
-  console.log("Full URL:", window.location.href);
-  console.log("Origin:", window.location.origin);
-  console.log("Passport.js OAuth authentication initialized successfully");
 }
 
 // Execute logs when this module is imported
