@@ -76,13 +76,6 @@ const translation = {
     sendingCode: "Sending verification code...",
     backToPhoneEntry: "Back to phone entry",
     termsText: "By signing in, you agree to our Terms of Service and Privacy Policy",
-    phoneLoginTitle: "Login with your phone",
-    phoneLoginDescription: "We'll send a verification code to your phone",
-    smsRatesApply: "Standard SMS rates may apply",
-    codeSentTo: "Code sent to",
-    codeExpiry: "Code expires in 10 minutes",
-    domainNotAuthorized: "This domain is not authorized for Google authentication:",
-    addDomainInstructions: "Please add this domain to Firebase authorized domains list in the Firebase console.",
   },
 
   // Profile and user settings

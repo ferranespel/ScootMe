@@ -1,4 +1,0 @@
-name = "dev"
-description = "Start development server"
-run = "npm run dev"
-persistent = true

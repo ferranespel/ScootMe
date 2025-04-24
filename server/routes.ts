@@ -1,4 +1,4 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
@@ -8,12 +8,10 @@ import {
   insertScooterSchema, insertRideSchema, updateRideSchema, 
   insertPaymentSchema, updateUserSchema, changePasswordSchema,
   verifyEmailSchema, verifyPhoneSchema, requestVerificationSchema,
-  phoneLoginSchema, phoneVerificationCodeSchema, User
+  phoneLoginSchema, phoneVerificationCodeSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
-import { getGoogleAuthUrl, handleGoogleCallback } from "./google-auth";
-import { handleGoogleAuth } from "./google-auth-handler";
 import { scrypt, timingSafeEqual, randomBytes } from "crypto";
 import { promisify } from "util";
 import {
@@ -29,9 +27,8 @@ import {
 } from "./verification";
 
 // Helper to check if user is authenticated
-function isAuthenticated(req: Request, res: Response, next: NextFunction) {
-  if (req.isAuthenticated() && req.user) {
-    // User is authenticated and req.user exists
+function isAuthenticated(req: Request, res: Response, next: Function) {
+  if (req.isAuthenticated()) {
     return next();
   }
   res.status(401).json({ message: "Authentication required" });
@@ -40,19 +37,11 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
 // TypeScript interface augmentation to make req.user accessible with correct typing
 declare global {
   namespace Express {
-    // Type req.user correctly without circular reference
-    interface User {
-      id: number;
-      username: string;
-      email: string;
-      password: string | null;
-      fullName: string;
-      phoneNumber?: string | null;
-      balance?: number;
-      isEmailVerified: boolean;
-      isPhoneVerified: boolean;
-      providerId?: string;
-      providerAccountId?: string;
+    interface Request {
+      user?: {
+        id: number;
+        [key: string]: any;
+      }
     }
   }
 }
@@ -60,74 +49,6 @@ declare global {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
-  
-  // Direct Google OAuth routes - revert to working version
-  app.get("/api/auth/google/url", (req, res) => {
-    try {
-      console.log("Generating Google OAuth URL...");
-      const url = getGoogleAuthUrl(req);
-      console.log("Generated URL:", url.substring(0, 50) + "..." + "(truncated)");
-      res.json({ url });
-    } catch (error) {
-      console.error("Error generating Google auth URL:", error);
-      res.status(500).json({ message: "Failed to generate Google authentication URL" });
-    }
-  });
-  
-  // Main Google OAuth route - redirects to Google login
-  app.get("/api/auth/google", (req, res) => {
-    console.log("Google OAuth redirect triggered");
-    try {
-      const url = getGoogleAuthUrl(req);
-      console.log("Redirecting to Google OAuth URL:", url.substring(0, 50) + "..." + "(truncated)");
-      return res.redirect(url);
-    } catch (error) {
-      console.error("Error redirecting to Google OAuth", error);
-      return res.redirect('/auth?error=oauth_redirect_failed');
-    }
-  });
-
-  // Google OAuth callback handler
-  app.get("/api/auth/google/callback", handleGoogleCallback);
-  
-  // New Firebase Google authentication endpoint
-  app.post("/api/auth/google", handleGoogleAuth);
-  
-  // Cache busting route - visit /api/clear-cache to force client cache refresh
-  app.get('/api/clear-cache', (req, res) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Surrogate-Control', 'no-store');
-    
-    // Return a simple HTML page that forces reload with cache clearing
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Clearing Cache...</title>
-          <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-          <meta http-equiv="Pragma" content="no-cache">
-          <meta http-equiv="Expires" content="0">
-          <script>
-            // Clear localStorage items related to auth
-            localStorage.removeItem('auth_user');
-            localStorage.removeItem('firebase_auth_success_time');
-            localStorage.removeItem('auth_success_timestamp');
-            localStorage.removeItem('app_version');
-            
-            // Force reload the main page with cache busting parameter
-            setTimeout(function() {
-              window.location.href = '/?cache_bust=' + Date.now();
-            }, 1000);
-          </script>
-        </head>
-        <body>
-          <h1>Clearing cache and reloading...</h1>
-        </body>
-      </html>
-    `);
-  });
   
   // Phone authentication routes
   app.post("/api/auth/phone/login", async (req, res) => {
@@ -824,8 +745,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create HTTP server
-  // Add OAuth authentication route - Using Passport.js directly now
-  app.post("/api/auth/oauth/google", handleGoogleAuth);
+  // Add Firebase authentication route
+  app.post("/api/auth/firebase/google", async (req, res) => {
+    try {
+      const { uid, email, displayName, photoURL } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      // Check if user already exists with this Google ID
+      let user = await storage.getUserByProviderId("firebase", uid);
+      
+      if (!user) {
+        // Create new user
+        const username = `${(displayName || email.split('@')[0]).toLowerCase().replace(/\s+/g, '_')}_${Math.floor(Math.random() * 1000)}`;
+        
+        user = await storage.createUser({
+          username,
+          email,
+          fullName: displayName || username,
+          password: null, // No password for OAuth users
+          profilePicture: photoURL || null,
+          providerId: "firebase",
+          providerAccountId: uid,
+          isEmailVerified: true // Email is verified through Google
+        });
+      }
+      
+      // Log the user in
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Login failed", error: err.message });
+        }
+        
+        // Return user without password
+        const { password, ...userWithoutPassword } = user;
+        return res.status(200).json(userWithoutPassword);
+      });
+    } catch (error: any) {
+      console.error("Firebase auth error:", error);
+      res.status(500).json({ message: "Authentication failed", error: error.message });
+    }
+  });
   
   const httpServer = createServer(app);
   return httpServer;

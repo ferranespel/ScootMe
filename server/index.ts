@@ -1,7 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { execSync } from 'child_process';
 
 const app = express();
 app.use(express.json());
@@ -38,67 +37,34 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Use PORT environment variable if set, otherwise default to 5000
-  const port = process.env.PORT || 5000;
-  console.log(`Starting server on port ${port}`);
+  const server = await registerRoutes(app);
 
-  // Directly start the application with minimal overhead
-  try {
-    const server = await registerRoutes(app);
-    
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      res.status(status).json({ message });
-      console.error(err);
-    });
-    
-    // Set up static file serving based on environment
-    if (app.get("env") === "development") {
-      await setupVite(app, server);
-    } else {
-      serveStatic(app);
-    }
-    
-    // Start server on port 5000 directly 
-    server.listen({
-      port: Number(port),
-      host: "0.0.0.0",
-    }, () => {
-      log(`Server running on port ${port}`);
-    }).on('error', (err: any) => {
-      // If the port is already in use, try to force close it and retry
-      if (err.code === 'EADDRINUSE') {
-        console.log(`Port ${port} is already in use, attempting to free it...`);
-        
-        // Try to forcefully kill any process using the port
-        try {
-          // Get and kill the process using port 5000
-          const pid = execSync(`lsof -t -i:${port}`).toString().trim();
-          if (pid) {
-            console.log(`Killing process ${pid} that's using port ${port}...`);
-            execSync(`kill -9 ${pid}`);
-            
-            // Try listening again after a short delay
-            setTimeout(() => {
-              server.listen({
-                port: Number(port),
-                host: "0.0.0.0",
-              }, () => {
-                log(`Server running on port ${port} after retry`);
-              });
-            }, 1000);
-          }
-        } catch (execError) {
-          console.error('Failed to kill process using the port:', execError);
-          console.error('Server failed to start:', err);
-        }
-      } else {
-        console.error('Server failed to start:', err);
-      }
-    });
-  } catch (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+
+    res.status(status).json({ message });
+    throw err;
+  });
+
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
   }
+
+  // ALWAYS serve the app on port 5000
+  // this serves both the API and the client.
+  // It is the only port that is not firewalled.
+  const port = 5000;
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
+    log(`serving on port ${port}`);
+  });
 })();

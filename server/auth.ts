@@ -12,10 +12,7 @@ import { fromZodError } from 'zod-validation-error';
 
 declare global {
   namespace Express {
-    // Define User interface to match the schema from the storage
-    interface User extends SelectUser {
-      // SelectUser already has all the fields we need
-    }
+    interface User extends SelectUser {}
   }
 }
 
