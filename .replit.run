@@ -1,1 +1,1 @@
-./start-server.sh
+node preview-server.cjs

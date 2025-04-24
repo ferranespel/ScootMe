@@ -1,9 +1,3 @@
-[dev]
-command = "npm run dev"
-runOnStart = true
-clearOnRerun = true
-
-[Start application]
-command = "tsx server/index.ts"
-runOnStart = true
-clearOnRerun = true
+[Start Application]
+run = "npm run dev"
+persistent = true
