@@ -248,39 +248,26 @@ export async function signInWithGoogle() {
       });
     }
     
-    // Fix for Replit domains - try direct Google auth URL if Firebase auth is failing
-    if (isReplitDomain && localStorage.getItem("google_auth_attempts")) {
-      const attempts = parseInt(localStorage.getItem("google_auth_attempts") || "0");
+    // Fix for Replit domains - always use direct Google auth URL for Replit domains
+    // This avoids the "accounts.google.com refused to connect" error
+    if (isReplitDomain) {
+      console.log("Using direct Google OAuth for Replit domain");
       
-      // After one failed attempt on Replit domain, try direct Google URL approach
-      if (attempts >= 1) {
-        console.log("Using direct Google OAuth for Replit domain after previous failures");
-        
-        // Clear the attempts counter
-        localStorage.removeItem("google_auth_attempts");
-        
-        // Use direct Google OAuth URL instead of Firebase
-        // This avoids issues with accounts.google.com connections on Replit
-        const googleClientId = "403092122141-tg7itgdjjf4fgh95ldh95i3nv9f82mf9.apps.googleusercontent.com"; // Public ID, safe to include
-        const redirectUri = encodeURIComponent(`${window.location.origin}/auth`);
-        const scope = encodeURIComponent("email profile");
-        const responseType = "token";
-        const state = encodeURIComponent(window.location.hostname);
-        
-        const directGoogleUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${googleClientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&state=${state}&prompt=select_account`;
-        
-        console.log("Redirecting to direct Google OAuth URL:", directGoogleUrl);
-        
-        // Do the redirect  
-        window.location.href = directGoogleUrl;
-        return null;
-      }
+      // Use direct Google OAuth URL instead of Firebase
+      // This avoids issues with accounts.google.com connections on Replit
+      const googleClientId = "403092122141-tg7itgdjjf4fgh95ldh95i3nv9f82mf9.apps.googleusercontent.com"; // Public ID, safe to include
+      const redirectUri = encodeURIComponent(`${window.location.origin}/auth`);
+      const scope = encodeURIComponent("email profile");
+      const responseType = "token";
+      const state = encodeURIComponent(`direct-oauth-${window.location.hostname}`);
       
-      // Increment attempts counter
-      localStorage.setItem("google_auth_attempts", (attempts + 1).toString());
-    } else if (isReplitDomain) {
-      // First attempt, set counter
-      localStorage.setItem("google_auth_attempts", "1");
+      const directGoogleUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${googleClientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&state=${state}&prompt=select_account`;
+      
+      console.log("Redirecting to direct Google OAuth URL:", directGoogleUrl);
+      
+      // Do the redirect  
+      window.location.href = directGoogleUrl;
+      return null;
     }
     
     // Mobile or custom domain: always use redirect for better compatibility

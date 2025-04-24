@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { OAuth2Client } from "google-auth-library";
 import { storage } from "./storage";
-import fetch from 'node-fetch';
 
 // Create a Google OAuth client
 const client = new OAuth2Client();
@@ -78,9 +77,9 @@ export async function handleGoogleAuth(req: Request, res: Response) {
           throw new Error(`Google API request failed with status: ${googleResponse.status}`);
         }
         
-        const userInfo = await googleResponse.json();
+        const userInfo = await googleResponse.json() as { email?: string };
         
-        if (!userInfo || !userInfo.email) {
+        if (!userInfo || typeof userInfo.email !== 'string') {
           throw new Error("Invalid response from Google API - missing email");
         }
         
@@ -96,11 +95,12 @@ export async function handleGoogleAuth(req: Request, res: Response) {
         }
         
         console.log(`✅ Direct OAuth token verified successfully for: ${email}`);
-      } catch (error) {
-        console.error("Direct OAuth token verification failed:", error.message);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("Direct OAuth token verification failed:", errorMessage);
         return res.status(401).json({ 
           error: "Token verification failed", 
-          detail: error.message
+          detail: errorMessage
         });
       }
     } else {
@@ -140,11 +140,12 @@ export async function handleGoogleAuth(req: Request, res: Response) {
             detail: "Token email does not match provided email"
           });
         }
-      } catch (tokenError) {
-        console.error("Firebase token verification failed:", tokenError);
+      } catch (tokenError: unknown) {
+        const errorMessage = tokenError instanceof Error ? tokenError.message : String(tokenError);
+        console.error("Firebase token verification failed:", errorMessage);
         return res.status(401).json({ 
           error: "Token verification failed", 
-          detail: tokenError.message
+          detail: errorMessage
         });
       }
     }
@@ -180,11 +181,12 @@ export async function handleGoogleAuth(req: Request, res: Response) {
         } else {
           console.log(`Created new user from Firebase auth: ${email}`);
         }
-      } catch (createError) {
-        console.error("Failed to create user:", createError);
+      } catch (createError: unknown) {
+        const errorMessage = createError instanceof Error ? createError.message : String(createError);
+        console.error("Failed to create user:", errorMessage);
         return res.status(500).json({ 
           error: "Failed to create user account", 
-          detail: createError.message
+          detail: errorMessage
         });
       }
     } else {
