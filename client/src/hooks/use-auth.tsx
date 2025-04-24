@@ -234,7 +234,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Update query cache
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Store user in localStorage for persistence across page reloads
+      try {
+        localStorage.setItem('auth_user', JSON.stringify(user));
+        localStorage.setItem('auth_success_timestamp', Date.now().toString());
+      } catch (e) {
+        console.warn("Error storing auth data in localStorage:", e);
+      }
+      
       toast({
         title: "Login successful",
         description: `Welcome to ScootMe, ${user.fullName}!`,
@@ -262,7 +272,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     onSuccess: (user: SelectUser) => {
+      // Update query cache
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Store user in localStorage for persistence across page reloads
+      try {
+        localStorage.setItem('auth_user', JSON.stringify(user));
+        localStorage.setItem('auth_success_timestamp', Date.now().toString());
+      } catch (e) {
+        console.warn("Error storing auth data in localStorage:", e);
+      }
+      
       toast({
         title: "Login successful",
         description: `Welcome to ScootMe, ${user.fullName}!`,
