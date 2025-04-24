@@ -1,2 +1,2 @@
 [workflow.start_application]
-command = "env PORT=3000 npm run dev"
+command = "./startup.sh"

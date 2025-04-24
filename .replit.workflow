@@ -1,6 +1,6 @@
 [workflow.start_application]
-command = "npm run dev"
+command = "./startup.sh"
 startExplorer = false
 openIn = "left"
 restartOn = {"fileChange": false, "fileCreate": false}
-exposePort = 3000
+exposePort = 5000
