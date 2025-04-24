@@ -74,6 +74,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Main Google OAuth route - redirects to Google login
+  app.get("/api/auth/google", (req, res) => {
+    console.log("Google OAuth redirect triggered");
+    try {
+      const url = getGoogleAuthUrl(req);
+      console.log("Redirecting to Google OAuth URL:", url.substring(0, 50) + "..." + "(truncated)");
+      return res.redirect(url);
+    } catch (error) {
+      console.error("Error redirecting to Google OAuth", error);
+      return res.redirect('/auth?error=oauth_redirect_failed');
+    }
+  });
+
   // Google OAuth callback handler
   app.get("/api/auth/google/callback", handleGoogleCallback);
   
