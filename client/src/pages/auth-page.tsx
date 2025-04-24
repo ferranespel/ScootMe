@@ -23,7 +23,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/language-selector";
 import { PhoneInput } from "@/components/phone-input";
-import { checkRedirectResult } from "@/lib/firebase";
+// Using direct auth instead of Firebase
+import { checkAuthenticationStatus } from "@/lib/direct-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -180,18 +181,18 @@ export default function AuthPage() {
       return false;
     };
 
-    // Check for Firebase redirect result
-    const checkFirebaseRedirect = async () => {
+    // Check for Passport.js redirect result
+    const checkAuthRedirect = async () => {
       try {
         // First check if we have a direct OAuth response
         const handled = await checkDirectOAuthResponse();
         if (handled) return;
         
-        // This will check if we're being redirected back from Firebase
-        const user = await checkRedirectResult();
+        // This will check if we're being redirected back from Passport.js
+        const user = await checkAuthenticationStatus();
         
         if (user) {
-          console.log("Successfully authenticated with Firebase");
+          console.log("Successfully authenticated with Passport.js");
           toast({
             title: "Login successful",
             description: "Welcome back!",
@@ -199,10 +200,10 @@ export default function AuthPage() {
           navigate("/");
         } else {
           // No redirect result, normal page load
-          console.log("No Firebase redirect result found");
+          console.log("No authentication redirect result found");
         }
       } catch (error: any) {
-        console.error("Firebase redirect error:", error);
+        console.error("Authentication redirect error:", error);
         // Show domain debugger on error
         setShowDomainDebugger(true);
         toast({
@@ -213,7 +214,7 @@ export default function AuthPage() {
       }
     };
 
-    checkFirebaseRedirect();
+    checkAuthRedirect();
   }, [user, navigate, toast]);
 
   if (isLoading) {
