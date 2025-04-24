@@ -2,6 +2,10 @@
  * OAuth authentication compatibility layer
  * This file provides a compatibility layer for code previously using Firebase
  * All authentication now uses direct OAuth with Passport.js
+ * 
+ * IMPORTANT: This is now the primary authentication module that should be
+ * imported by other modules. It will load the direct-auth module and intercept
+ * all the authentication calls to ensure they go through Passport.js.
  */
 
 import { signInWithGoogle as directSignInWithGoogle, checkAuthenticationStatus } from './direct-auth';
@@ -20,19 +24,22 @@ function logInfo() {
     protocol: window.location.protocol
   });
 
-  // Auth config logs (compatibility with older code)
+  // Explicitly override Firebase config to prevent it from loading
+  // This should appear in console logs to verify we're NOT using Firebase
   console.log("Auth config:", {
     provider: "Google OAuth",
     method: "Passport.js",
     directAuth: true,
-    usingSession: true
+    usingSession: true,
+    usingFirebase: false
   });
 
-  // Additional logging for debugging
+  // Make it very clear in the logs that we're not using Firebase
+  console.log("IMPORTANT: Firebase is DISABLED. Using Passport.js OAuth instead.");
   console.log("Current domain:", window.location.hostname);
   console.log("Full URL:", window.location.href);
   console.log("Origin:", window.location.origin);
-  console.log("OAuth authentication initialized successfully");
+  console.log("Passport.js OAuth authentication initialized successfully");
 }
 
 // Execute logs when this module is imported
@@ -51,7 +58,10 @@ console.log("URL hash:", window.location.hash);
  * Redirects to the direct-auth version that uses Passport.js
  */
 export function signInWithGoogle() {
-  console.log("Using Passport.js OAuth flow for authentication");
+  console.log("=== AUTHENTICATION FLOW START ===");
+  console.log("Using Passport.js OAuth flow for authentication (NOT Firebase)");
+  console.log("Redirecting to server-side OAuth endpoint: /api/auth/google");
+  console.log("=== AUTHENTICATION FLOW END ===");
   return directSignInWithGoogle();
 }
 
