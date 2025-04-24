@@ -1857,6 +1857,7 @@ function serveStatic(app2) {
 }
 
 // server/index.ts
+import { execSync } from "child_process";
 var app = express2();
 app.use(express2.json());
 app.use(express2.urlencoded({ extended: false }));
@@ -1885,24 +1886,53 @@ app.use((req, res, next) => {
   next();
 });
 (async () => {
-  const server = await registerRoutes(app);
-  app.use((err, _req, res, _next) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
-    throw err;
-  });
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+  const port = process.env.PORT || 5e3;
+  console.log(`Starting server on port ${port}`);
+  try {
+    const server = await registerRoutes(app);
+    app.use((err, _req, res, _next) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+      console.error(err);
+    });
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
+    server.listen({
+      port: Number(port),
+      host: "0.0.0.0"
+    }, () => {
+      log(`Server running on port ${port}`);
+    }).on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        console.log(`Port ${port} is already in use, attempting to free it...`);
+        try {
+          const pid = execSync(`lsof -t -i:${port}`).toString().trim();
+          if (pid) {
+            console.log(`Killing process ${pid} that's using port ${port}...`);
+            execSync(`kill -9 ${pid}`);
+            setTimeout(() => {
+              server.listen({
+                port: Number(port),
+                host: "0.0.0.0"
+              }, () => {
+                log(`Server running on port ${port} after retry`);
+              });
+            }, 1e3);
+          }
+        } catch (execError) {
+          console.error("Failed to kill process using the port:", execError);
+          console.error("Server failed to start:", err);
+        }
+      } else {
+        console.error("Server failed to start:", err);
+      }
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
   }
-  const port = process.env.PORT || process.env.CUSTOM_PORT || 3e3;
-  server.listen({
-    port: Number(port),
-    host: "0.0.0.0",
-    reusePort: true
-  }, () => {
-    log(`serving on port ${port}`);
-  });
 })();

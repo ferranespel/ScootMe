@@ -50,42 +50,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="ScootMe - Rent electric scooters on-demand at the tap of a button" />
     <meta name="theme-color" content="#3B82F6" />
-    <base href="/" />
     <title>ScootMe - Scooter Rental App</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
     <!-- Google Maps API will be loaded from main.tsx using the environment variable -->
-    <script>
-      // Script error handler to show user-friendly message
-      function handleScriptError() {
-        console.error('Failed to load application script');
-        document.getElementById('root').innerHTML = 
-          '<div style="text-align:center;padding:2rem;font-family:system-ui,sans-serif">' +
-            '<h2>Application Error</h2>' +
-            '<p>Failed to load application resources. Please try refreshing the page.</p>' +
-            '<p><button onclick="window.location.reload()" style="padding:0.5rem 1rem;cursor:pointer">Refresh</button></p>' +
-          '</div>';
-      }
-      
-      // Show loading indication
-      document.addEventListener('DOMContentLoaded', function() {
-        const root = document.getElementById('root');
-        // Only add loading message if root is empty
-        if (root && root.children.length === 0) {
-          root.innerHTML = '<div style="text-align:center;padding:2rem;font-family:system-ui,sans-serif">' +
-            '<h2>Loading ScootMe...</h2>' +
-            '<p>Please wait while the application initializes</p>' +
-          '</div>';
-          
-          // Set a timeout to show error message if application doesn't load in 10 seconds
-          setTimeout(function() {
-            if (document.body.innerHTML.includes('Loading ScootMe')) {
-              handleScriptError();
-            }
-          }, 10000);
-        }
-      });
-    </script>
-    <script type="module" crossorigin src="/assets/index-cevJTdNF.js" onerror="handleScriptError()"></script>
+    <script type="module" crossorigin src="/assets/index-cevJTdNF.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BZkeSZ3S.css">
   </head>
   <body>
