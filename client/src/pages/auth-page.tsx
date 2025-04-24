@@ -418,6 +418,11 @@ export default function AuthPage() {
             </p>
             
             {/* Link to auth test page for debugging */}
+            <div className="mt-4 text-center">
+              <Link href="/auth-test" className="text-sm text-primary hover:underline">
+                Test Authentication Methods
+              </Link>
+            </div>
             {process.env.NODE_ENV !== 'production' && (
               <div className="w-full mt-2">
                 <a 
