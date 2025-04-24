@@ -775,8 +775,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create HTTP server
-  // Add Firebase authentication route - use our enhanced handler for better reliability
-  app.post("/api/auth/firebase/google", handleGoogleAuth);
+  // Add OAuth authentication route - Using Passport.js directly now
+  app.post("/api/auth/oauth/google", handleGoogleAuth);
   
   const httpServer = createServer(app);
   return httpServer;

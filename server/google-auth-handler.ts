@@ -6,7 +6,7 @@ import { storage } from "./storage";
 const client = new OAuth2Client();
 
 /**
- * Verify a Google ID token and authenticate the user
+ * Verify a Google OAuth token and authenticate the user
  */
 export async function handleGoogleAuth(req: Request, res: Response) {
   try {
@@ -21,13 +21,11 @@ export async function handleGoogleAuth(req: Request, res: Response) {
       domain, 
       origin,
       timestamp,
-      attemptNumber,
-      directOAuth // New parameter for direct OAuth flow
+      attemptNumber
     } = req.body;
     
     // Log detailed info for debugging
-    const authType = directOAuth ? 'Direct OAuth' : 'Firebase';
-    console.log(`Processing ${authType} Google auth request from ${domain || 'unknown domain'} (attempt: ${attemptNumber || 1})`);
+    console.log(`Processing OAuth Google auth request from ${domain || 'unknown domain'} (attempt: ${attemptNumber || 1})`);
     console.log(`Auth data: uid=${uid}, email=${email}, name=${displayName}, emailVerified=${emailVerified}`);
     
     // Extra logging for custom domain
@@ -37,7 +35,7 @@ export async function handleGoogleAuth(req: Request, res: Response) {
     if (isCustomDomain || isReplitDomain) {
       console.log(`⚠️ ${isCustomDomain ? 'CUSTOM' : 'REPLIT'} DOMAIN AUTH REQUEST - ${origin}`);
       console.log(`📱 REQUEST DETAILS:`, {
-        method: directOAuth ? 'Direct OAuth' : 'Firebase',
+        method: 'OAuth',
         hasToken: !!token,
         uid,
         email,
@@ -49,105 +47,56 @@ export async function handleGoogleAuth(req: Request, res: Response) {
     }
     
     // Validate required fields
-    if (!email || (!token && !directOAuth) || !uid) {
+    if (!email || !token || !uid) {
       console.error("Missing required fields:", { 
         token: !!token, 
         uid: !!uid, 
-        email: !!email,
-        directOAuth: !!directOAuth
+        email: !!email
       });
       return res.status(400).json({ 
         error: "Missing required fields", 
-        detail: `Required: email, uid, and token (for Firebase) or directOAuth=true flag.`
+        detail: `Required: email, uid, and token for OAuth authentication.`
       });
     }
     
-    // Different verification process based on auth type
+    // Verify the OAuth access token
     let verifiedEmail = null;
     
-    if (directOAuth) {
-      // For direct OAuth flow, we need to verify the access token by calling Google's userinfo endpoint
-      try {
-        // Validate access token by calling Google's userinfo API
-        const googleResponse = await fetch(
-          `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`
-        );
-        
-        if (!googleResponse.ok) {
-          throw new Error(`Google API request failed with status: ${googleResponse.status}`);
-        }
-        
-        const userInfo = await googleResponse.json() as { email?: string };
-        
-        if (!userInfo || typeof userInfo.email !== 'string') {
-          throw new Error("Invalid response from Google API - missing email");
-        }
-        
-        verifiedEmail = userInfo.email;
-        
-        // Make sure the emails match
-        if (verifiedEmail !== email) {
-          console.error(`Email mismatch: token=${verifiedEmail}, request=${email}`);
-          return res.status(401).json({ 
-            error: "Invalid token", 
-            detail: "Token email does not match provided email"
-          });
-        }
-        
-        console.log(`✅ Direct OAuth token verified successfully for: ${email}`);
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error("Direct OAuth token verification failed:", errorMessage);
+    try {
+      // Validate access token by calling Google's userinfo API
+      const googleResponse = await fetch(
+        `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`
+      );
+      
+      if (!googleResponse.ok) {
+        throw new Error(`Google API request failed with status: ${googleResponse.status}`);
+      }
+      
+      const userInfo = await googleResponse.json() as { email?: string };
+      
+      if (!userInfo || typeof userInfo.email !== 'string') {
+        throw new Error("Invalid response from Google API - missing email");
+      }
+      
+      verifiedEmail = userInfo.email;
+      
+      // Make sure the emails match
+      if (verifiedEmail !== email) {
+        console.error(`Email mismatch: token=${verifiedEmail}, request=${email}`);
         return res.status(401).json({ 
-          error: "Token verification failed", 
-          detail: errorMessage
+          error: "Invalid token", 
+          detail: "Token email does not match provided email"
         });
       }
-    } else {
-      // Standard Firebase verification
-      try {
-        const ticket = await client.verifyIdToken({
-          idToken: token,
-          audience: process.env.VITE_FIREBASE_API_KEY
-        });
-        
-        const payload = ticket.getPayload();
-        
-        if (isCustomDomain || isReplitDomain) {
-          console.log(`✅ Firebase token verified successfully, payload:`, {
-            sub: payload?.sub,
-            email: payload?.email,
-            name: payload?.name,
-            picture: payload?.picture ? 'present' : 'missing'
-          });
-        }
-        
-        if (!payload || !payload.email) {
-          console.error("Invalid token payload:", payload);
-          return res.status(401).json({ 
-            error: "Invalid token", 
-            detail: "Token payload missing required fields"
-          });
-        }
-        
-        verifiedEmail = payload.email;
-        
-        // Verify that token matches the claimed user
-        if (verifiedEmail !== email) {
-          console.error(`Email mismatch: token=${verifiedEmail}, request=${email}`);
-          return res.status(401).json({ 
-            error: "Invalid token", 
-            detail: "Token email does not match provided email"
-          });
-        }
-      } catch (tokenError: unknown) {
-        const errorMessage = tokenError instanceof Error ? tokenError.message : String(tokenError);
-        console.error("Firebase token verification failed:", errorMessage);
-        return res.status(401).json({ 
-          error: "Token verification failed", 
-          detail: errorMessage
-        });
-      }
+      
+      console.log(`✅ OAuth token verified successfully for: ${email}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("OAuth token verification failed:", errorMessage);
+      return res.status(401).json({ 
+        error: "Token verification failed", 
+        detail: errorMessage
+      });
     }
     
     // Check if user exists by email
@@ -168,18 +117,18 @@ export async function handleGoogleAuth(req: Request, res: Response) {
           isEmailVerified: true, // Email is verified by Google
           isPhoneVerified: false,
           providerId: 'google',
-          providerAccountId: uid, // Firebase UID
+          providerAccountId: uid, // Google user ID
           balance: 0 // Start with zero balance
         });
         
         if (isCustomDomain) {
-          console.log(`✨ CUSTOM DOMAIN - Created new user from Firebase auth:`, {
+          console.log(`✨ CUSTOM DOMAIN - Created new user from Google OAuth:`, {
             id: user.id,
             email: email,
             username: username
           });
         } else {
-          console.log(`Created new user from Firebase auth: ${email}`);
+          console.log(`Created new user from Google OAuth: ${email}`);
         }
       } catch (createError: unknown) {
         const errorMessage = createError instanceof Error ? createError.message : String(createError);
@@ -205,7 +154,7 @@ export async function handleGoogleAuth(req: Request, res: Response) {
             email: email
           });
         } else {
-          console.log(`Logged in existing user via Firebase: ${email}`);
+          console.log(`Logged in existing user via Google OAuth: ${email}`);
         }
       } catch (updateError) {
         console.error("Failed to update user:", updateError);
@@ -230,11 +179,12 @@ export async function handleGoogleAuth(req: Request, res: Response) {
       return res.status(200).json(user);
     });
     
-  } catch (error) {
-    console.error("Firebase Google auth error:", error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Google OAuth auth error:", error);
     return res.status(401).json({ 
       error: "Authentication failed", 
-      detail: error.message || "Unknown error occurred"
+      detail: errorMessage || "Unknown error occurred"
     });
   }
 }

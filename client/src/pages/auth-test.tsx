@@ -7,15 +7,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2, Check, AlertTriangle } from "lucide-react";
 
-// Test modes
-type TestMode = "firebase" | "direct" | "both";
+// Auth test page for Passport.js OAuth
 
 export default function AuthTestPage() {
   const { user, googleLoginMutation } = useAuth();
-  const [testMode, setTestMode] = useState<TestMode>("direct");
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [directStatus, setDirectStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [firebaseStatus, setFirebaseStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Use localStorage to track which auth method was used
@@ -26,28 +23,8 @@ export default function AuthTestPage() {
     }
   }, []);
 
-  // Start Google login with Firebase (old method)
-  const startFirebaseLogin = async () => {
-    setFirebaseStatus("loading");
-    try {
-      // Store authentication method
-      localStorage.setItem('auth_method_used', 'Firebase');
-      
-      // Import firebase auth functions dynamically
-      const { signInWithGoogle } = await import("@/lib/firebase");
-      
-      // Start Google sign-in process
-      await signInWithGoogle();
-      
-      // If we got here (no redirect happened), consider it a success
-      // Most likely we'll redirect and not reach this point
-      setFirebaseStatus("success");
-    } catch (error) {
-      console.error("Firebase auth error:", error);
-      setFirebaseStatus("error");
-      setErrorMessage(error instanceof Error ? error.message : String(error));
-    }
-  };
+  // Firebase method has been removed entirely
+  // Now using only direct Passport.js OAuth
 
   // Start Google login with Direct OAuth
   const startDirectLogin = async () => {
@@ -74,35 +51,20 @@ export default function AuthTestPage() {
 
   // Clear authentication data
   const clearAuthData = () => {
+    // Remove all auth-related data from localStorage
     localStorage.removeItem('auth_user');
     localStorage.removeItem('auth_success_timestamp');
-    localStorage.removeItem('firebase_auth_success_time');
+    localStorage.removeItem('auth_redirect_from');
+    localStorage.removeItem('auth_origin');
+    localStorage.removeItem('auth_timestamp');
     localStorage.removeItem('auth_method_used');
     
     // Reload the page to clear any in-memory state
     window.location.reload();
   };
 
-  // Start appropriate test based on mode
-  const startTest = () => {
-    setTestStatus(null);
-    setErrorMessage(null);
-    
-    if (testMode === "firebase") {
-      startFirebaseLogin();
-    } else if (testMode === "direct") {
-      startDirectLogin();
-    } else {
-      // "both" mode - test both methods
-      setDirectStatus("loading");
-      setFirebaseStatus("loading");
-      
-      // Start with direct, then try Firebase if it fails
-      startDirectLogin().catch(() => {
-        startFirebaseLogin();
-      });
-    }
-  };
+  // Test direct authentication
+  const startTest = startDirectLogin;
 
   return (
     <div className="container max-w-4xl py-10">
@@ -153,79 +115,23 @@ export default function AuthTestPage() {
           <CardDescription>Test different authentication methods</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="direct" onValueChange={(value) => setTestMode(value as TestMode)}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="direct">Direct OAuth</TabsTrigger>
-              <TabsTrigger value="firebase">Firebase</TabsTrigger>
-              <TabsTrigger value="both">Both (Fallback)</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="direct">
-              <div className="space-y-4">
-                <p>
-                  Test direct Google OAuth authentication without Firebase as a middleman.
-                  This will redirect to Google's OAuth page and then back to the app.
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button onClick={startTest} disabled={directStatus === "loading"}>
-                    {directStatus === "loading" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Test Direct Authentication
-                  </Button>
-                  {directStatus === "success" && <Check className="text-green-600" />}
-                  {directStatus === "error" && <AlertTriangle className="text-red-600" />}
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="firebase">
-              <div className="space-y-4">
-                <p>
-                  Test Firebase Google authentication. This will redirect to Firebase's
-                  authentication page and then back to the app.
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button onClick={startTest} disabled={firebaseStatus === "loading"}>
-                    {firebaseStatus === "loading" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Test Firebase Authentication
-                  </Button>
-                  {firebaseStatus === "success" && <Check className="text-green-600" />}
-                  {firebaseStatus === "error" && <AlertTriangle className="text-red-600" />}
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="both">
-              <div className="space-y-4">
-                <p>
-                  Test authentication with fallback. This will try direct OAuth first,
-                  and if that fails, it will try Firebase as a fallback.
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button onClick={startTest} disabled={directStatus === "loading" || firebaseStatus === "loading"}>
-                    {(directStatus === "loading" || firebaseStatus === "loading") && 
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Test With Fallback
-                  </Button>
-                </div>
-                <div className="flex gap-4">
-                  <div className="flex items-center gap-1">
-                    <span>Direct:</span>
-                    {directStatus === "idle" && <span>Idle</span>}
-                    {directStatus === "loading" && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
-                    {directStatus === "success" && <Check className="text-green-600" />}
-                    {directStatus === "error" && <AlertTriangle className="text-red-600" />}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span>Firebase:</span>
-                    {firebaseStatus === "idle" && <span>Idle</span>}
-                    {firebaseStatus === "loading" && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
-                    {firebaseStatus === "success" && <Check className="text-green-600" />}
-                    {firebaseStatus === "error" && <AlertTriangle className="text-red-600" />}
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+          <div className="space-y-4">
+            <p>
+              Test Google OAuth authentication using Passport.js on the backend.
+              This will redirect to Google's OAuth page and then back to the app.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button onClick={startDirectLogin} disabled={directStatus === "loading"}>
+                {directStatus === "loading" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Test Authentication
+              </Button>
+              {directStatus === "success" && <Check className="text-green-600" />}
+              {directStatus === "error" && <AlertTriangle className="text-red-600" />}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Note: Firebase authentication has been fully replaced with Passport.js.
+            </p>
+          </div>
           
           {testStatus && (
             <Alert className="mt-4">

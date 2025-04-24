@@ -132,7 +132,7 @@ export default function AuthPage() {
           
           // Call our backend to create/login user
           console.log("Sending direct Google OAuth user data to backend");
-          const response = await apiRequest("POST", "/api/auth/firebase/google", {
+          const response = await apiRequest("POST", "/api/auth/oauth/google", {
             token: accessToken,
             uid: userInfo.sub,
             email: userInfo.email,
@@ -141,8 +141,7 @@ export default function AuthPage() {
             emailVerified: true,
             domain: window.location.hostname,
             origin: window.location.origin,
-            timestamp: Date.now(),
-            directOAuth: true
+            timestamp: Date.now()
           });
           
           if (!response.ok) {
@@ -454,9 +453,16 @@ export default function AuthPage() {
                     size="sm"
                     className="mt-2 bg-white text-red-600 border-red-200 hover:bg-red-50"
                     onClick={() => {
-                      // Try to fix the issue by clearing any cookies
-                      localStorage.removeItem('firebase_auth_error');
-                      localStorage.removeItem('firebase_auth_attempt');
+                      // Try to fix the issue by clearing any auth cookies and local storage data
+                      localStorage.removeItem('auth_error');
+                      localStorage.removeItem('auth_attempt');
+                      localStorage.removeItem('auth_user');
+                      localStorage.removeItem('auth_success_timestamp');
+                      localStorage.removeItem('auth_redirect_from');
+                      localStorage.removeItem('auth_origin');
+                      localStorage.removeItem('auth_timestamp');
+                      localStorage.removeItem('auth_method_used');
+                      // Clear all cookies
                       document.cookie.split(";").forEach(function(c) {
                         document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
                       });

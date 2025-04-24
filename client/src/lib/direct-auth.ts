@@ -1,6 +1,6 @@
 /**
- * Direct authentication services without Firebase
- * Uses the app's Passport.js setup for authentication
+ * Direct OAuth authentication services
+ * Uses Passport.js for Google authentication and session management
  */
 
 /**
