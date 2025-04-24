@@ -417,6 +417,18 @@ export default function AuthPage() {
               {t('auth.termsText')}
             </p>
             
+            {/* Link to auth test page for debugging */}
+            {process.env.NODE_ENV !== 'production' && (
+              <div className="w-full mt-2">
+                <a 
+                  href="/auth-test" 
+                  className="text-xs text-blue-500 hover:text-blue-700 flex items-center justify-center"
+                >
+                  Debug Authentication
+                </a>
+              </div>
+            )}
+            
             {/* Domain debugger for Firebase auth */}
             {showDomainDebugger && domainInfo && (
               <Alert variant="destructive" className="mt-4">

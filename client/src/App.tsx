@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
+import AuthTest from "@/pages/auth-test";
 import HistoryPage from "@/pages/history-page";
 import WalletPage from "@/pages/wallet-page";
 import ProfilePage from "@/pages/profile-page";
@@ -21,6 +22,7 @@ function Router() {
       <ProtectedRoute path="/wallet" component={WalletPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/auth-test" component={AuthTest} />
       <Route component={NotFound} />
     </Switch>
   );
