@@ -88,114 +88,135 @@ try {
  * This should be called when the application initializes
  */
 export async function checkRedirectResult() {
-  if (!auth) {
-    console.error("Firebase authentication not initialized");
-    return null;
-  }
-
   try {
     console.log("Checking for Google sign-in redirect result...");
     console.log("Current URL:", window.location.href);
     console.log("Current domain:", window.location.hostname);
     console.log("Current origin:", window.location.origin);
     
+    // Determine if we're on a Replit domain
+    const isReplitDomain = window.location.hostname.includes('replit');
+    
     // Special handling for custom domain
     const isCustomDomain = window.location.hostname === "scootme.ferransson.com";
-    if (isCustomDomain) {
-      console.log("CUSTOM DOMAIN DETECTED - EXTRA LOGGING ENABLED");
-      
-      // Log all query parameters for debugging
-      const params = new URLSearchParams(window.location.search);
-      const paramEntries = {};
-      for (const [key, value] of params.entries()) {
-        paramEntries[key] = value;
-      }
-      console.log("URL Parameters:", paramEntries);
-      
-      // Extract hash fragment information (often used by OAuth redirects)
-      const hashParams = {};
-      const hashString = window.location.hash.substring(1); // Remove the # character
-      if (hashString) {
-        const hashFragments = hashString.split('&');
-        hashFragments.forEach(fragment => {
-          const parts = fragment.split('=');
-          if (parts.length === 2) {
-            hashParams[parts[0]] = decodeURIComponent(parts[1]);
-          }
-        });
-      }
-      console.log("Hash Parameters:", hashParams);
-    }
     
-    // Get the redirect result safely
-    let result;
-    try {
-      console.log("Attempting to get redirect result...");
-      // Add debug info about URL parameters
-      console.log("URL search params:", window.location.search);
-      console.log("URL hash:", window.location.hash);
-      
-      result = await getRedirectResult(auth);
-      console.log("Raw redirect result:", result ? "Success" : "No result");
-      
-      // Detailed logging for custom domain
-      if (isCustomDomain) {
-        console.log("Firebase Auth Result Details:", {
-          hasResult: !!result,
-          hasUser: result ? !!result.user : false,
-          hasCredential: result ? !!GoogleAuthProvider.credentialFromResult(result) : false
-        });
-      }
-      
-      // Check for specific error indicators in URL
-      if (window.location.search.includes("error=")) {
-        console.error("Error parameter detected in URL:", window.location.search);
-        // Parse the error message from URL if possible
-        const urlParams = new URLSearchParams(window.location.search);
-        const errorMsg = urlParams.get("error");
-        throw new Error(`Authentication redirect error: ${errorMsg || "Unknown error"}`);
-      }
-    } catch (error) {
-      console.error("Error getting redirect result:", error);
-      
-      // Don't display alert in production, only log the error
-      console.error(`Failed to get Google redirect result. Make sure "${window.location.hostname}" is added to Firebase authorized domains.`);
-      return null;
-    }
+    // Log all query parameters and hash fragments for debugging
+    console.log("Attempting to get redirect result...");
+    console.log("URL search params:", window.location.search);
+    console.log("URL hash:", window.location.hash);
     
-    // If no result found, return null with more detailed info
-    if (!result) {
-      console.log("No redirect result found, but no errors detected");
-      // Check if we have any Firebase error info in local storage
-      const storedError = localStorage.getItem("firebase_auth_error");
-      if (storedError) {
-        console.error("Found stored Firebase error:", storedError);
-        localStorage.removeItem("firebase_auth_error"); // Clear the error
+    // First, check if we have a direct OAuth response in the URL hash
+    const hashString = window.location.hash.substring(1); // Remove the # character
+    if (hashString) {
+      console.log("Found hash string, checking for direct OAuth response");
+      
+      // Parse the hash parameters
+      const hashParams: Record<string, string> = {};
+      const hashFragments = hashString.split('&');
+      hashFragments.forEach(fragment => {
+        const parts = fragment.split('=');
+        if (parts.length === 2) {
+          hashParams[parts[0]] = decodeURIComponent(parts[1]);
+        }
+      });
+      
+      console.log("Hash parameters:", hashParams);
+      
+      // Check if this is a direct OAuth response (it will have access_token and token_type)
+      if (hashParams.access_token && hashParams.token_type === 'Bearer') {
+        console.log("Direct OAuth response detected!");
         
-        // Don't show alerts in production
-        console.error(`Previous authentication attempt failed: ${storedError}`);
+        try {
+          // Use the access token to get user information
+          const accessToken = hashParams.access_token;
+          
+          // Call Google's userinfo endpoint to get user details
+          const response = await fetch(
+            `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`
+          );
+          
+          if (!response.ok) {
+            throw new Error(`Google API error: ${response.status}`);
+          }
+          
+          const userData = await response.json();
+          console.log("Received user data from Google API:", {
+            email: userData.email,
+            name: userData.name,
+            picture: userData.picture ? 'present' : 'missing',
+            sub: userData.sub
+          });
+          
+          if (!userData.email || !userData.sub) {
+            throw new Error("Invalid user data from Google API");
+          }
+          
+          // Create a user object similar to what Firebase would provide
+          const directUser = {
+            uid: userData.sub,
+            email: userData.email,
+            displayName: userData.name,
+            photoURL: userData.picture,
+            emailVerified: true // Google OAuth verifies emails
+          };
+          
+          // Clear the hash to avoid reprocessing on page refresh
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+          
+          // Call our backend to create/login user with directOAuth flag
+          return await sendUserDataToBackend(directUser, accessToken, true);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error("Direct OAuth processing error:", errorMessage);
+          return null;
+        }
       }
-      return null;
-    }
-
-    console.log("Google sign-in redirect successful!");
-    
-    // Extract user data
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    const token = credential?.accessToken;
-    const user = result.user;
-    
-    if (!user || !user.email) {
-      console.error("Invalid user data from redirect result");
-      throw new Error("Unable to get user information from Google");
     }
     
-    // Call our backend to create/login user
-    return await sendUserDataToBackend(user, token);
+    // If no direct OAuth response, check for Firebase redirect result
+    // but only if Firebase authentication is initialized
+    if (auth) {
+      let result;
+      try {
+        result = await getRedirectResult(auth);
+        console.log("Raw Firebase redirect result:", result ? "Success" : "No result");
+        
+        // If no result found, return null
+        if (!result) {
+          console.log("No Firebase redirect result found");
+          return null;
+        }
+        
+        console.log("Firebase Google sign-in redirect successful!");
+        
+        // Extract user data
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const token = credential?.accessToken;
+        const user = result.user;
+        
+        if (!user || !user.email) {
+          console.error("Invalid user data from Firebase redirect result");
+          throw new Error("Unable to get user information from Google");
+        }
+        
+        // Call our backend to create/login user
+        return await sendUserDataToBackend(user, token);
+      } catch (error) {
+        console.error("Firebase redirect result error:", error instanceof Error ? error.message : String(error));
+        
+        // Don't display alert in production, only log the error
+        console.error(`Failed to get Google redirect result. Make sure "${window.location.hostname}" is added to Firebase authorized domains.`);
+        return null;
+      }
+    } else {
+      console.log("Firebase authentication not initialized, skipping Firebase redirect check");
+    }
     
+    return null;
   } catch (error) {
-    console.error("Firebase redirect result error:", error);
-    handleAuthError(error);
+    console.error("Redirect result error:", error instanceof Error ? error.message : String(error));
     return null;
   }
 }
@@ -384,12 +405,16 @@ export async function signInWithGoogle() {
 
 /**
  * Send authenticated user data to our backend
+ * @param user The user object from Firebase or direct OAuth
+ * @param token The access token from Firebase or direct OAuth
+ * @param directOAuth Whether this is from direct OAuth flow (true) or Firebase (false)
  */
-async function sendUserDataToBackend(user: any, token: string | undefined) {
+async function sendUserDataToBackend(user: any, token: string | undefined, directOAuth: boolean = false) {
   const isCustomDomain = window.location.hostname === "scootme.ferransson.com";
+  const isReplitDomain = window.location.hostname.includes('replit');
   
   try {
-    console.log("Sending user data to backend...");
+    console.log("Sending user data to backend...", directOAuth ? "(Direct OAuth)" : "(Firebase)");
     
     // Save auth state to local storage before API call for debugging
     localStorage.setItem('firebase_auth_success_time', Date.now().toString());
@@ -448,7 +473,8 @@ async function sendUserDataToBackend(user: any, token: string | undefined) {
           domain: window.location.hostname, // Send domain info for logging
           origin: window.location.origin,    // Send origin for better debugging
           timestamp: Date.now(),
-          attemptNumber: attempts
+          attemptNumber: attempts,
+          directOAuth: directOAuth // Include flag for direct OAuth flow
         });
         
         if (!response.ok) {
