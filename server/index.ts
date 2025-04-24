@@ -56,35 +56,8 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Log all environment variables for debugging
-  console.log("Environment variables:", {
-    PORT: process.env.PORT,
-    NODE_ENV: process.env.NODE_ENV,
-    REPLIT_ENVIRONMENT: process.env.REPLIT_ENVIRONMENT,
-  });
-  
-  // Use environment port if specified, otherwise use 3000
-  // This way we can override it from the environment if needed
   const port = process.env.PORT || 3000;
-  
-  // Log the port decision
-  console.log(`Using port: ${port} (NODE_ENV: ${process.env.NODE_ENV})`);
-  
-  // Check if port 5000 is already in use (for debugging purposes)
-  import('child_process').then(cp => {
-    try {
-      const command = 'lsof -i :5000 | grep LISTEN || echo "Port 5000 appears to be available"';
-      cp.exec(command, (error, stdout, stderr) => {
-        if (error) {
-          console.log(`Port check error: ${error.message}`);
-          return;
-        }
-        console.log(`Port 5000 check result: ${stdout.trim()}`);
-      });
-    } catch (e) {
-      console.log(`Port check failed: ${e.message}`);
-    }
-  });
+  console.log(`Starting server on port ${port}`);
   
   // Start server on the standard port
   server.listen({
