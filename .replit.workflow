@@ -1,5 +1,5 @@
 [workflow.start_application]
-command = "node ultra-fast-deploy.js"
+command = "npm run dev"
 startExplorer = false
 openIn = "left"
 restartOn = {"fileChange": false, "fileCreate": false}
