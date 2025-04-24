@@ -37,10 +37,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Replit workflow is configured to wait for port 5000
-  // So we need to use port 5000 for the application to work in Replit
-  const port = 5000;
-  console.log(`Starting server on port ${port} (fixed for Replit compatibility)`);
+  // Use the port from environment variable or default to 3000 for Replit compatibility
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+  console.log(`Starting server on port ${port} (using PORT env variable or default)`);
 
   // Directly start the application with minimal overhead
   try {
