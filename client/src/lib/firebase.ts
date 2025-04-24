@@ -42,9 +42,22 @@ try {
   console.log("Full URL:", window.location.href);
   console.log("Origin:", window.location.origin);
   
-  // Initialize Firebase
-  app = initializeApp(firebaseConfig);
+  // Initialize Firebase with enhanced configuration
+  const enhancedConfig = {
+    ...firebaseConfig,
+    // Extended configuration to help with auth issues
+    appVerificationDisabledForTesting: process.env.NODE_ENV !== 'production', // Allow easier testing
+  };
+  
+  app = initializeApp(enhancedConfig);
+  
+  // Get auth with persistence settings to help with cookie issues
   auth = getAuth(app);
+  
+  // Configure auth settings to be more permissive
+  auth.settings.appVerificationDisabledForTesting = process.env.NODE_ENV !== 'production';
+  
+  // Create Google provider with enhanced configuration
   googleProvider = new GoogleAuthProvider();
   
   // Add scopes for Google authentication
@@ -58,8 +71,11 @@ try {
     login_hint: localStorage.getItem('last_login_email') || undefined,
     // Store the domain for verification later
     state: window.location.hostname,
-    // Ensure proper redirect back to our auth page
-    redirect_uri: window.location.origin + '/auth'
+    // Use special encoding for redirect info
+    // This helps avoid third-party cookie issues
+    redirect_uri: window.location.origin + '/auth',
+    // Added parameter to avoid cookie restrictions in some browsers
+    cookie_policy: 'none'
   });
   
   console.log("Firebase initialized successfully");
@@ -197,11 +213,16 @@ export async function signInWithGoogle() {
   try {
     console.log("Starting Google sign-in with Firebase...");
     
-    // IMPORTANT: Use redirect method for ALL devices until we resolve the domain authorization issues
+    // Set this to false if you want to try popup auth on desktop
+    // Should always be true for Replit preview domains
     const forceMobileFlow = true; 
     
     // Special handling for custom domain
     const isCustomDomain = window.location.hostname === "scootme.ferransson.com";
+    
+    // Get the current domain for the auth request
+    const currentDomain = window.location.hostname;
+    const isReplitDomain = currentDomain.includes('replit');
     
     // Detect if running on mobile (but we're forcing redirect for all devices right now)
     const isMobile = forceMobileFlow || isCustomDomain || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -210,6 +231,7 @@ export async function signInWithGoogle() {
     console.log("Authentication flow detection:", {
       forceMobileFlow,
       isCustomDomain,
+      isReplitDomain,
       userAgent: navigator.userAgent.substring(0, 50) + "...", // Truncate to avoid huge logs
       isMobileDetected: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
       finalDecision: isMobile ? "REDIRECT" : "POPUP"
@@ -224,6 +246,41 @@ export async function signInWithGoogle() {
         hostname: window.location.hostname,
         href: window.location.href
       });
+    }
+    
+    // Fix for Replit domains - try direct Google auth URL if Firebase auth is failing
+    if (isReplitDomain && localStorage.getItem("google_auth_attempts")) {
+      const attempts = parseInt(localStorage.getItem("google_auth_attempts") || "0");
+      
+      // After one failed attempt on Replit domain, try direct Google URL approach
+      if (attempts >= 1) {
+        console.log("Using direct Google OAuth for Replit domain after previous failures");
+        
+        // Clear the attempts counter
+        localStorage.removeItem("google_auth_attempts");
+        
+        // Use direct Google OAuth URL instead of Firebase
+        // This avoids issues with accounts.google.com connections on Replit
+        const googleClientId = "403092122141-tg7itgdjjf4fgh95ldh95i3nv9f82mf9.apps.googleusercontent.com"; // Public ID, safe to include
+        const redirectUri = encodeURIComponent(`${window.location.origin}/auth`);
+        const scope = encodeURIComponent("email profile");
+        const responseType = "token";
+        const state = encodeURIComponent(window.location.hostname);
+        
+        const directGoogleUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${googleClientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&state=${state}&prompt=select_account`;
+        
+        console.log("Redirecting to direct Google OAuth URL:", directGoogleUrl);
+        
+        // Do the redirect  
+        window.location.href = directGoogleUrl;
+        return null;
+      }
+      
+      // Increment attempts counter
+      localStorage.setItem("google_auth_attempts", (attempts + 1).toString());
+    } else if (isReplitDomain) {
+      // First attempt, set counter
+      localStorage.setItem("google_auth_attempts", "1");
     }
     
     // Mobile or custom domain: always use redirect for better compatibility

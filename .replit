@@ -1,6 +1,7 @@
 
 run = "npm run start"
 hidden = [".config", "package-lock.json"]
+modules = ["nodejs-20"]
 
 [env]
 PORT = "5000"

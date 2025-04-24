@@ -16,8 +16,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { phoneLoginSchema } from "@shared/schema";
-import { Loader2, Phone } from "lucide-react";
+import { Loader2, Phone, AlertCircle } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
+import { detectCurrentDomain } from "@/lib/domain-detector";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/language-selector";
 import { PhoneInput } from "@/components/phone-input";
@@ -75,6 +77,10 @@ export default function AuthPage() {
 
   const { toast } = useToast();
 
+  // Domain detection for Firebase auth debugging
+  const [domainInfo, setDomainInfo] = useState<any>(null);
+  const [showDomainDebugger, setShowDomainDebugger] = useState(false);
+  
   // Check for Firebase redirect result and handle logged in status
   useEffect(() => {
     // If already authenticated, redirect to home page
@@ -82,10 +88,104 @@ export default function AuthPage() {
       navigate("/");
       return;
     }
+    
+    // Detect current domain for debugging
+    const domainData = detectCurrentDomain();
+    setDomainInfo(domainData);
+    
+    // Auto-show domain debugger in development
+    if (process.env.NODE_ENV === 'development') {
+      setShowDomainDebugger(true);
+    }
+    
+    // Check if we have a direct OAuth response in the hash fragment
+    // This is for the alternative direct Google OAuth flow
+    const checkDirectOAuthResponse = async () => {
+      if (window.location.hash && window.location.hash.includes('access_token=')) {
+        try {
+          console.log("Direct Google OAuth response detected in URL hash");
+          
+          // Parse hash parameters
+          const params = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = params.get('access_token');
+          
+          if (!accessToken) {
+            throw new Error("No access token found in OAuth response");
+          }
+          
+          // Get user info from Google using the access token
+          const userInfoResponse = await fetch(
+            `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`
+          );
+          
+          if (!userInfoResponse.ok) {
+            throw new Error("Failed to get user info from Google API");
+          }
+          
+          const userInfo = await userInfoResponse.json();
+          
+          if (!userInfo.email) {
+            throw new Error("No email found in Google user info");
+          }
+          
+          // Call our backend to create/login user
+          console.log("Sending direct Google OAuth user data to backend");
+          const response = await apiRequest("POST", "/api/auth/firebase/google", {
+            token: accessToken,
+            uid: userInfo.sub,
+            email: userInfo.email,
+            displayName: userInfo.name,
+            photoURL: userInfo.picture,
+            emailVerified: true,
+            domain: window.location.hostname,
+            origin: window.location.origin,
+            timestamp: Date.now(),
+            directOAuth: true
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Server error: ${response.status} ${errorText}`);
+          }
+          
+          const userData = await response.json();
+          console.log("Direct OAuth login successful");
+          
+          toast({
+            title: "Login successful",
+            description: "Welcome back!",
+          });
+          
+          // Clear the hash to avoid processing the token again on refresh
+          window.history.replaceState(
+            null, 
+            document.title, 
+            window.location.pathname + window.location.search
+          );
+          
+          navigate("/");
+          return true;
+        } catch (error: any) {
+          console.error("Direct OAuth error:", error);
+          setShowDomainDebugger(true);
+          toast({
+            title: "Authentication failed",
+            description: error.message || "Failed to log in with Google",
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
+      return false;
+    };
 
     // Check for Firebase redirect result
     const checkFirebaseRedirect = async () => {
       try {
+        // First check if we have a direct OAuth response
+        const handled = await checkDirectOAuthResponse();
+        if (handled) return;
+        
         // This will check if we're being redirected back from Firebase
         const user = await checkRedirectResult();
         
@@ -102,6 +202,8 @@ export default function AuthPage() {
         }
       } catch (error: any) {
         console.error("Firebase redirect error:", error);
+        // Show domain debugger on error
+        setShowDomainDebugger(true);
         toast({
           title: "Authentication failed",
           description: error.message || "Failed to log in with Google",
@@ -310,10 +412,44 @@ export default function AuthPage() {
               </form>
             )}
           </CardContent>
-          <CardFooter className="flex flex-col items-center">
+          <CardFooter className="flex flex-col items-center gap-4">
             <p className="text-sm text-gray-500 text-center">
               {t('auth.termsText')}
             </p>
+            
+            {/* Domain debugger for Firebase auth */}
+            {showDomainDebugger && domainInfo && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Google Authentication Issue</AlertTitle>
+                <AlertDescription className="mt-2">
+                  <p className="text-sm mb-2">Domain information for Firebase:</p>
+                  <code className="block bg-gray-100 p-2 text-xs rounded overflow-auto">
+                    {domainInfo.domain}
+                  </code>
+                  <p className="text-sm mt-2">
+                    Please make sure this domain is added to Firebase authorized domains.
+                  </p>
+                  <Button
+                    variant="outline" 
+                    size="sm"
+                    className="mt-2 bg-white text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => {
+                      // Try to fix the issue by clearing any cookies
+                      localStorage.removeItem('firebase_auth_error');
+                      localStorage.removeItem('firebase_auth_attempt');
+                      document.cookie.split(";").forEach(function(c) {
+                        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                      });
+                      // Force reload without cache
+                      window.location.reload();
+                    }}
+                  >
+                    Clear Cookies & Reload
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
           </CardFooter>
         </Card>
       </div>

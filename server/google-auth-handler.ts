@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { OAuth2Client } from "google-auth-library";
 import { storage } from "./storage";
+import fetch from 'node-fetch';
 
 // Create a Google OAuth client
 const client = new OAuth2Client();
@@ -21,18 +22,23 @@ export async function handleGoogleAuth(req: Request, res: Response) {
       domain, 
       origin,
       timestamp,
-      attemptNumber
+      attemptNumber,
+      directOAuth // New parameter for direct OAuth flow
     } = req.body;
     
     // Log detailed info for debugging
-    console.log(`Processing Firebase Google auth request from ${domain || 'unknown domain'} (attempt: ${attemptNumber || 1})`);
+    const authType = directOAuth ? 'Direct OAuth' : 'Firebase';
+    console.log(`Processing ${authType} Google auth request from ${domain || 'unknown domain'} (attempt: ${attemptNumber || 1})`);
     console.log(`Auth data: uid=${uid}, email=${email}, name=${displayName}, emailVerified=${emailVerified}`);
     
     // Extra logging for custom domain
     const isCustomDomain = domain === "scootme.ferransson.com";
-    if (isCustomDomain) {
-      console.log(`⚠️ CUSTOM DOMAIN AUTH REQUEST - ${origin}`);
+    const isReplitDomain = domain?.includes('replit');
+    
+    if (isCustomDomain || isReplitDomain) {
+      console.log(`⚠️ ${isCustomDomain ? 'CUSTOM' : 'REPLIT'} DOMAIN AUTH REQUEST - ${origin}`);
       console.log(`📱 REQUEST DETAILS:`, {
+        method: directOAuth ? 'Direct OAuth' : 'Firebase',
         hasToken: !!token,
         uid,
         email,
@@ -44,55 +50,103 @@ export async function handleGoogleAuth(req: Request, res: Response) {
     }
     
     // Validate required fields
-    if (!token || !uid || !email) {
-      console.error("Missing required fields:", { token: !!token, uid: !!uid, email: !!email });
+    if (!email || (!token && !directOAuth) || !uid) {
+      console.error("Missing required fields:", { 
+        token: !!token, 
+        uid: !!uid, 
+        email: !!email,
+        directOAuth: !!directOAuth
+      });
       return res.status(400).json({ 
         error: "Missing required fields", 
-        detail: `Required: token, uid, email. Provided: ${!!token ? 'token' : ''} ${!!uid ? 'uid' : ''} ${!!email ? 'email' : ''}`
+        detail: `Required: email, uid, and token (for Firebase) or directOAuth=true flag.`
       });
     }
     
-    // Verify the token with Google
-    let payload;
-    try {
-      const ticket = await client.verifyIdToken({
-        idToken: token,
-        audience: process.env.VITE_FIREBASE_API_KEY
-      });
-      
-      payload = ticket.getPayload();
-      
-      if (isCustomDomain) {
-        console.log(`✅ CUSTOM DOMAIN - Token verified successfully, payload:`, {
-          sub: payload?.sub,
-          email: payload?.email,
-          name: payload?.name,
-          picture: payload?.picture ? 'present' : 'missing'
-        });
-      }
-      
-      if (!payload || !payload.email) {
-        console.error("Invalid token payload:", payload);
+    // Different verification process based on auth type
+    let verifiedEmail = null;
+    
+    if (directOAuth) {
+      // For direct OAuth flow, we need to verify the access token by calling Google's userinfo endpoint
+      try {
+        // Validate access token by calling Google's userinfo API
+        const googleResponse = await fetch(
+          `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`
+        );
+        
+        if (!googleResponse.ok) {
+          throw new Error(`Google API request failed with status: ${googleResponse.status}`);
+        }
+        
+        const userInfo = await googleResponse.json();
+        
+        if (!userInfo || !userInfo.email) {
+          throw new Error("Invalid response from Google API - missing email");
+        }
+        
+        verifiedEmail = userInfo.email;
+        
+        // Make sure the emails match
+        if (verifiedEmail !== email) {
+          console.error(`Email mismatch: token=${verifiedEmail}, request=${email}`);
+          return res.status(401).json({ 
+            error: "Invalid token", 
+            detail: "Token email does not match provided email"
+          });
+        }
+        
+        console.log(`✅ Direct OAuth token verified successfully for: ${email}`);
+      } catch (error) {
+        console.error("Direct OAuth token verification failed:", error.message);
         return res.status(401).json({ 
-          error: "Invalid token", 
-          detail: "Token payload missing required fields"
+          error: "Token verification failed", 
+          detail: error.message
         });
       }
-      
-      // Verify that token matches the claimed user
-      if (payload.email !== email) {
-        console.error(`Email mismatch: token=${payload.email}, request=${email}`);
+    } else {
+      // Standard Firebase verification
+      try {
+        const ticket = await client.verifyIdToken({
+          idToken: token,
+          audience: process.env.VITE_FIREBASE_API_KEY
+        });
+        
+        const payload = ticket.getPayload();
+        
+        if (isCustomDomain || isReplitDomain) {
+          console.log(`✅ Firebase token verified successfully, payload:`, {
+            sub: payload?.sub,
+            email: payload?.email,
+            name: payload?.name,
+            picture: payload?.picture ? 'present' : 'missing'
+          });
+        }
+        
+        if (!payload || !payload.email) {
+          console.error("Invalid token payload:", payload);
+          return res.status(401).json({ 
+            error: "Invalid token", 
+            detail: "Token payload missing required fields"
+          });
+        }
+        
+        verifiedEmail = payload.email;
+        
+        // Verify that token matches the claimed user
+        if (verifiedEmail !== email) {
+          console.error(`Email mismatch: token=${verifiedEmail}, request=${email}`);
+          return res.status(401).json({ 
+            error: "Invalid token", 
+            detail: "Token email does not match provided email"
+          });
+        }
+      } catch (tokenError) {
+        console.error("Firebase token verification failed:", tokenError);
         return res.status(401).json({ 
-          error: "Invalid token", 
-          detail: "Token email does not match provided email"
+          error: "Token verification failed", 
+          detail: tokenError.message
         });
       }
-    } catch (tokenError) {
-      console.error("Token verification failed:", tokenError);
-      return res.status(401).json({ 
-        error: "Token verification failed", 
-        detail: tokenError.message
-      });
     }
     
     // Check if user exists by email
