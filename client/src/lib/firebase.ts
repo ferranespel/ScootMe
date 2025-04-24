@@ -2,6 +2,16 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { apiRequest } from "./queryClient";
 
+// Add special logging for the new custom domain
+const isCustomDomain = window.location.hostname === "scootme.ferransson.com";
+console.log("DOMAIN DETECTION:", {
+  hostname: window.location.hostname,
+  isCustomDomain,
+  fullUrl: window.location.href,
+  origin: window.location.origin,
+  protocol: window.location.protocol
+});
+
 // Firebase configuration
 // IMPORTANT: We explicitly use the firebase auth domain as authDomain
 // instead of the current domain to avoid auth issues
@@ -73,6 +83,34 @@ export async function checkRedirectResult() {
     console.log("Current domain:", window.location.hostname);
     console.log("Current origin:", window.location.origin);
     
+    // Special handling for custom domain
+    const isCustomDomain = window.location.hostname === "scootme.ferransson.com";
+    if (isCustomDomain) {
+      console.log("CUSTOM DOMAIN DETECTED - EXTRA LOGGING ENABLED");
+      
+      // Log all query parameters for debugging
+      const params = new URLSearchParams(window.location.search);
+      const paramEntries = {};
+      for (const [key, value] of params.entries()) {
+        paramEntries[key] = value;
+      }
+      console.log("URL Parameters:", paramEntries);
+      
+      // Extract hash fragment information (often used by OAuth redirects)
+      const hashParams = {};
+      const hashString = window.location.hash.substring(1); // Remove the # character
+      if (hashString) {
+        const hashFragments = hashString.split('&');
+        hashFragments.forEach(fragment => {
+          const parts = fragment.split('=');
+          if (parts.length === 2) {
+            hashParams[parts[0]] = decodeURIComponent(parts[1]);
+          }
+        });
+      }
+      console.log("Hash Parameters:", hashParams);
+    }
+    
     // Get the redirect result safely
     let result;
     try {
@@ -84,6 +122,15 @@ export async function checkRedirectResult() {
       result = await getRedirectResult(auth);
       console.log("Raw redirect result:", result ? "Success" : "No result");
       
+      // Detailed logging for custom domain
+      if (isCustomDomain) {
+        console.log("Firebase Auth Result Details:", {
+          hasResult: !!result,
+          hasUser: result ? !!result.user : false,
+          hasCredential: result ? !!GoogleAuthProvider.credentialFromResult(result) : false
+        });
+      }
+      
       // Check for specific error indicators in URL
       if (window.location.search.includes("error=")) {
         console.error("Error parameter detected in URL:", window.location.search);
@@ -94,8 +141,9 @@ export async function checkRedirectResult() {
       }
     } catch (error) {
       console.error("Error getting redirect result:", error);
-      // Display error notification for debugging
-      alert(`Failed to get Google redirect result. This usually happens when the domain isn't authorized in Firebase console. Please add "${window.location.hostname}" to Firebase authorized domains.`);
+      
+      // Don't display alert in production, only log the error
+      console.error(`Failed to get Google redirect result. Make sure "${window.location.hostname}" is added to Firebase authorized domains.`);
       return null;
     }
     
@@ -107,7 +155,9 @@ export async function checkRedirectResult() {
       if (storedError) {
         console.error("Found stored Firebase error:", storedError);
         localStorage.removeItem("firebase_auth_error"); // Clear the error
-        alert(`Previous authentication attempt failed: ${storedError}`);
+        
+        // Don't show alerts in production
+        console.error(`Previous authentication attempt failed: ${storedError}`);
       }
       return null;
     }
@@ -150,37 +200,75 @@ export async function signInWithGoogle() {
     // IMPORTANT: Use redirect method for ALL devices until we resolve the domain authorization issues
     const forceMobileFlow = true; 
     
+    // Special handling for custom domain
+    const isCustomDomain = window.location.hostname === "scootme.ferransson.com";
+    
     // Detect if running on mobile (but we're forcing redirect for all devices right now)
-    const isMobile = forceMobileFlow || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobile = forceMobileFlow || isCustomDomain || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     // Print mobile detection details
-    console.log("Mobile detection:", {
+    console.log("Authentication flow detection:", {
       forceMobileFlow,
-      userAgent: navigator.userAgent,
+      isCustomDomain,
+      userAgent: navigator.userAgent.substring(0, 50) + "...", // Truncate to avoid huge logs
       isMobileDetected: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
-      finalDecision: isMobile
+      finalDecision: isMobile ? "REDIRECT" : "POPUP"
     });
     
-    // Mobile: always use redirect for better compatibility
+    // Enhanced logging for custom domain
+    if (isCustomDomain) {
+      console.log("⚠️ CUSTOM DOMAIN AUTH - Using redirect flow for scootme.ferransson.com");
+      console.log("📍 Current location:", {
+        origin: window.location.origin,
+        pathname: window.location.pathname,
+        hostname: window.location.hostname,
+        href: window.location.href
+      });
+    }
+    
+    // Mobile or custom domain: always use redirect for better compatibility
     if (isMobile) {
-      console.log("Mobile device detected, using redirect auth");
+      console.log("Using redirect auth flow");
       try {
         // Store current timestamp before redirect to help debugging
         localStorage.setItem("firebase_auth_attempt", Date.now().toString());
+        localStorage.setItem("firebase_auth_origin", window.location.origin);
+        localStorage.setItem("firebase_auth_pathname", window.location.pathname);
+        
+        // Always clear any previous errors
+        localStorage.removeItem("firebase_auth_error");
         
         // Set up custom parameters to help with debugging
-        googleProvider.setCustomParameters({
+        const customParameters: any = {
           prompt: 'select_account',
-          state: window.location.hostname, // Pass hostname as state for debugging
-          // Make sure we redirect back to our site's auth page
-          redirect_uri: window.location.origin + '/auth'
+          state: `auth-${window.location.hostname}`, // Pass hostname as state for debugging
+        };
+        
+        // Add redirect_uri parameter for custom domain
+        if (isCustomDomain) {
+          // For custom domain, explicitly specify redirect URI
+          const redirectUri = `${window.location.origin}/auth`;
+          console.log("🔀 Setting explicit redirect URI:", redirectUri);
+          customParameters.redirect_uri = redirectUri;
+        }
+        
+        // Add login_hint if we have a saved email
+        const lastEmail = localStorage.getItem('last_login_email');
+        if (lastEmail) {
+          customParameters.login_hint = lastEmail;
+        }
+        
+        googleProvider.setCustomParameters(customParameters);
+        
+        console.log("Starting redirect with provider:", {
+          providerId: googleProvider.providerId,
+          customParameters
         });
         
-        console.log("Starting redirect with provider:", googleProvider);
         await signInWithRedirect(auth, googleProvider);
         return null; // Page will redirect, this won't execute
       } catch (error: any) {
-        console.error("Mobile redirect error:", error);
+        console.error("Redirect auth error:", error);
         // Store error for future debugging
         if (error && error.code) {
           localStorage.setItem("firebase_auth_error", `${error.code}: ${error.message}`);
@@ -253,46 +341,128 @@ export async function signInWithGoogle() {
 /**
  * Send authenticated user data to our backend
  */
-async function sendUserDataToBackend(user, token) {
+async function sendUserDataToBackend(user: any, token: string | undefined) {
+  const isCustomDomain = window.location.hostname === "scootme.ferransson.com";
+  
   try {
     console.log("Sending user data to backend...");
+    
+    // Save auth state to local storage before API call for debugging
+    localStorage.setItem('firebase_auth_success_time', Date.now().toString());
     
     // Store the email for future login hints
     if (user.email) {
       localStorage.setItem('last_login_email', user.email);
     }
     
-    // Log all fields except token for debugging
-    console.log("User data being sent:", {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL ? "Yes" : "No",
-      domain: window.location.hostname,
-      origin: window.location.origin
-    });
-    
-    const response = await apiRequest("POST", "/api/auth/firebase/google", {
-      token: token,
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      domain: window.location.hostname, // Send domain info for logging
-      origin: window.location.origin     // Send origin for better debugging
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Backend authentication error:", errorText);
-      throw new Error(`Server error: ${response.status} ${errorText}`);
+    // Extra logging for custom domain
+    if (isCustomDomain) {
+      console.log("🔐 CUSTOM DOMAIN - Firebase auth successful, sending data to backend");
+      console.log("📱 Auth user data:", {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        hasPhotoURL: !!user.photoURL,
+        emailVerified: user.emailVerified,
+        providerId: user.providerId,
+        metadata: user.metadata ? {
+          creationTime: user.metadata.creationTime,
+          lastSignInTime: user.metadata.lastSignInTime
+        } : null
+      });
+    } else {
+      // Log all fields except token for debugging
+      console.log("User data being sent:", {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL ? "Yes" : "No",
+        domain: window.location.hostname,
+        origin: window.location.origin
+      });
     }
     
-    const userData = await response.json();
-    console.log("Backend authentication successful");
-    return userData;
+    // Add some retry logic for custom domain
+    let attempts = 0;
+    const maxAttempts = isCustomDomain ? 3 : 1;
+    let lastError: any = null;
+    
+    while (attempts < maxAttempts) {
+      attempts++;
+      try {
+        if (isCustomDomain && attempts > 1) {
+          console.log(`🔄 CUSTOM DOMAIN - Retry attempt ${attempts}/${maxAttempts}`);
+        }
+        
+        const response = await apiRequest("POST", "/api/auth/firebase/google", {
+          token: token,
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          emailVerified: user.emailVerified,
+          domain: window.location.hostname, // Send domain info for logging
+          origin: window.location.origin,    // Send origin for better debugging
+          timestamp: Date.now(),
+          attemptNumber: attempts
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Backend authentication error (attempt ${attempts}/${maxAttempts}):`, errorText);
+          
+          if (isCustomDomain) {
+            // For custom domain, throw an error with detailed information
+            throw new Error(`Server error: ${response.status} ${errorText}`);
+          }
+          
+          // For regular domain, we should retry
+          lastError = new Error(`Server error: ${response.status} ${errorText}`);
+          
+          // Wait before retry
+          if (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            continue;
+          } else {
+            throw lastError;
+          }
+        }
+        
+        const userData = await response.json();
+        
+        if (isCustomDomain) {
+          console.log("🎉 CUSTOM DOMAIN - Backend authentication successful!", userData);
+        } else {
+          console.log("Backend authentication successful");
+        }
+        
+        // Store additional data for session recovery in case of page reload
+        localStorage.setItem('auth_success_timestamp', Date.now().toString());
+        
+        return userData;
+      } catch (error) {
+        lastError = error;
+        if (attempts >= maxAttempts) break;
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    // If we got here, all attempts failed
+    throw lastError || new Error("Failed to authenticate with the server after multiple attempts");
   } catch (error) {
     console.error("Error sending user data to backend:", error);
+    
+    if (isCustomDomain) {
+      console.error("🚨 CUSTOM DOMAIN - Authentication failed in backend!", error);
+      // Store error for debugging
+      localStorage.setItem('auth_backend_error', JSON.stringify({
+        message: error.message,
+        time: new Date().toISOString(),
+        origin: window.location.origin
+      }));
+    }
+    
     throw error;
   }
 }
