@@ -23,8 +23,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/language-selector";
 import { PhoneInput } from "@/components/phone-input";
-// Using direct auth instead of Firebase
-import { checkAuthenticationStatus } from "@/lib/direct-auth";
+// Import from our compatibility layer
+import { checkAuthenticationStatus } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -79,11 +79,11 @@ export default function AuthPage() {
 
   const { toast } = useToast();
 
-  // Domain detection for Firebase auth debugging
+  // Domain detection for OAuth debugging
   const [domainInfo, setDomainInfo] = useState<any>(null);
   const [showDomainDebugger, setShowDomainDebugger] = useState(false);
   
-  // Check for Firebase redirect result and handle logged in status
+  // Check for OAuth redirect result and handle logged in status
   useEffect(() => {
     // If already authenticated, redirect to home page
     if (user) {

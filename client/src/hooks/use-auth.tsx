@@ -56,8 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Dynamically import to avoid loading auth module on every page
-        const { checkAuthenticationStatus } = await import("@/lib/direct-auth");
+        // Dynamically import from our updated firebase.ts (which uses Passport.js OAuth)
+        const { checkAuthenticationStatus } = await import("@/lib/firebase");
         const userData = await checkAuthenticationStatus();
         
         if (userData) {
@@ -240,8 +240,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const googleLoginMutation = useMutation<SelectUser | null, Error, void>({
     mutationFn: async () => {
-      // Import direct auth functions dynamically to avoid loading them on every page
-      const { signInWithGoogle } = await import("@/lib/direct-auth");
+      // Import auth functions dynamically from our updated firebase.ts (which uses Passport.js OAuth) 
+      const { signInWithGoogle } = await import("@/lib/firebase");
       try {
         // This will redirect to Google authentication
         // We'll return to the app after successful auth

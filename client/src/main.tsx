@@ -5,6 +5,9 @@ import "./index.css";
 // Import i18n (internationalization)
 import "./i18n";
 
+// Load firebase compatibility layer first - ensures OAuth setup
+import "@/lib/firebase";
+
 // No need to load Google Maps here anymore,
 // it's now handled by the Map component itself
 // for better initialization control and error handling
