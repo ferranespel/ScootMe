@@ -93,6 +93,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // New Firebase Google authentication endpoint
   app.post("/api/auth/google", handleGoogleAuth);
   
+  // Cache busting route - visit /api/clear-cache to force client cache refresh
+  app.get('/api/clear-cache', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    
+    // Return a simple HTML page that forces reload with cache clearing
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Clearing Cache...</title>
+          <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+          <meta http-equiv="Pragma" content="no-cache">
+          <meta http-equiv="Expires" content="0">
+          <script>
+            // Clear localStorage items related to auth
+            localStorage.removeItem('auth_user');
+            localStorage.removeItem('firebase_auth_success_time');
+            localStorage.removeItem('auth_success_timestamp');
+            localStorage.removeItem('app_version');
+            
+            // Force reload the main page with cache busting parameter
+            setTimeout(function() {
+              window.location.href = '/?cache_bust=' + Date.now();
+            }, 1000);
+          </script>
+        </head>
+        <body>
+          <h1>Clearing cache and reloading...</h1>
+        </body>
+      </html>
+    `);
+  });
+  
   // Phone authentication routes
   app.post("/api/auth/phone/login", async (req, res) => {
     try {

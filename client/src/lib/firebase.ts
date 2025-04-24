@@ -6,7 +6,35 @@
  * IMPORTANT: This is now the primary authentication module that should be
  * imported by other modules. It will load the direct-auth module and intercept
  * all the authentication calls to ensure they go through Passport.js.
+ * 
+ * Version: 20240424-1
  */
+
+// Block any attempt to load the real Firebase
+// This overrides the global Firebase namespace to prevent the actual Firebase SDK from initializing
+// @ts-ignore
+window.firebaseIsDisabled = true;
+// @ts-ignore
+window.firebaseBlocker = function() {
+  console.warn("🚫 Firebase initialization attempted but blocked by compatibility layer");
+  return {
+    auth: () => ({
+      onAuthStateChanged: () => {},
+      signInWithRedirect: () => Promise.resolve(null),
+      getRedirectResult: () => Promise.resolve(null)
+    }),
+    // Mock other Firebase services as needed
+    app: () => ({}),
+    firestore: () => ({})
+  };
+};
+
+// If Firebase was already loaded somehow, replace it
+if (typeof window !== 'undefined' && window.hasOwnProperty('firebase')) {
+  console.warn("🚫 Replacing existing Firebase instance with Passport compatibility layer");
+  // @ts-ignore
+  window.firebase = window.firebaseBlocker();
+}
 
 import { signInWithGoogle as directSignInWithGoogle, checkAuthenticationStatus } from './direct-auth';
 
