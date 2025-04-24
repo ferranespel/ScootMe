@@ -1,1 +1,1 @@
-node run-button.cjs
+./start-dev.sh
