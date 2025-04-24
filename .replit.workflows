@@ -1,2 +1,4 @@
-[workflow.start_application]
-command = "./startup.sh"
+[Start application]
+command = "tsx server/index.ts"
+runOnStart = true
+clearOnRerun = true
