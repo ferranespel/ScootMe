@@ -37,34 +37,38 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  // Replit workflow is configured to wait for port 5000
+  // So we need to use port 5000 for the application to work in Replit
+  const port = 5000;
+  console.log(`Starting server on port ${port} (fixed for Replit compatibility)`);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+  // Directly start the application with minimal overhead
+  try {
+    const server = await registerRoutes(app);
+    
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+      console.error(err);
+    });
+    
+    // Set up static file serving based on environment
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
+    
+    // Start server on the port required by Replit
+    server.listen({
+      port: Number(port),
+      host: "0.0.0.0",
+    }, () => {
+      log(`Server running on port ${port}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
   }
-
-  const port = process.env.PORT || 3000;
-  console.log(`Starting server on port ${port}`);
-  
-  // Start server on the standard port
-  server.listen({
-    port: Number(port),
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
 })();
