@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { LanguageSelector } from "@/components/language-selector";
 import { PhoneInput } from "@/components/phone-input";
 import { checkRedirectResult } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function AuthPage() {
   const { t } = useTranslation();
