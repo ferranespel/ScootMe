@@ -4,11 +4,41 @@ This guide provides instructions for deploying the ScootMe application on Replit
 
 ## Deployment Options
 
-There are several ways to deploy the application. Choose the option that works best for you.
+There are several ways to deploy the application, from professional automatic deployment to manual options if needed.
 
-### Option 1: Use the Deploy Button in Replit (Recommended)
+### Option 1: Professional One-Click Deployment (Recommended)
 
-Before deploying:
+The application now supports fully automated deployment:
+
+1. Simply click the "Deploy" button in the Replit interface.
+
+2. Our professional deployment system (`server.js`) will automatically:
+   - Build the client application
+   - Copy the built files to the correct location
+   - Add necessary fixes for production
+   - Start the server with proper error handling
+
+This is the recommended approach as it requires no manual steps and handles all deployment tasks automatically.
+
+### Option 2: Professional Alternative Deployment
+
+If you prefer more control over the deployment process:
+
+1. Run the professional deployment script:
+   ```
+   node auto-deploy.js
+   ```
+
+2. This script will:
+   - Set up the proper environment
+   - Build the client application
+   - Copy the built files to the correct location
+   - Add necessary fixes for production
+   - Start the server using `server.cjs`
+
+### Option 3: Legacy Deployment Method
+
+If you need to use the previous deployment method:
 
 1. Run the following command to prepare the application for deployment:
    ```
@@ -16,46 +46,6 @@ Before deploying:
    ```
 
 2. Click the "Deploy" button in the Replit interface.
-
-3. If deployment fails with Node.js errors, try Option 2 or Option 3 below.
-
-### Option 2: Use the Custom Deployment Script
-
-1. Run the custom deployment script:
-   ```
-   ./deploy-production.sh
-   ```
-
-2. This script will:
-   - Build the client application
-   - Copy the built files to the correct location
-   - Add necessary fixes for production
-   - Start the server using `server.cjs` (a CommonJS compatible server)
-
-### Option 3: Manual Deployment
-
-If both automatic options fail, follow these manual steps:
-
-1. Build the client application:
-   ```
-   npm run build
-   ```
-
-2. Copy built files to the server/public directory:
-   ```
-   mkdir -p server/public
-   cp -r dist/* server/public/
-   ```
-
-3. Edit the index.html file to add a base href:
-   ```
-   sed -i 's/<title>/<base href="\/"><title>/' server/public/index.html
-   ```
-
-4. Start the server:
-   ```
-   node server.cjs
-   ```
 
 ## Troubleshooting
 
