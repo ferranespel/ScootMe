@@ -24,7 +24,7 @@ type AuthContextType = {
   registerMutation: UseMutationResult<SelectUser, Error, RegisterData>;
   phoneLoginMutation: UseMutationResult<void, Error, PhoneLoginData>;
   phoneVerifyMutation: UseMutationResult<SelectUser, Error, PhoneVerifyData>;
-  googleLoginMutation: UseMutationResult<SelectUser, Error, void>;
+  googleLoginMutation: UseMutationResult<SelectUser | null, Error, void>;
 };
 
 type LoginData = z.infer<typeof loginSchema>;
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
   
-  // Check for Firebase redirect result and localStorage when component mounts
+  // Check for authentication status when component mounts 
   useEffect(() => {
     const checkAuthState = async () => {
       try {
@@ -56,58 +56,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Dynamically import to avoid loading Firebase on every page
-        const { checkRedirectResult } = await import("@/lib/firebase");
-        const userData = await checkRedirectResult();
+        // Dynamically import to avoid loading auth module on every page
+        const { checkAuthenticationStatus } = await import("@/lib/direct-auth");
+        const userData = await checkAuthenticationStatus();
         
         if (userData) {
-          // If we got user data from a redirect, update the auth state
-          console.log("Found user from redirect, updating auth state");
+          // If we got user data, update the auth state
+          console.log("Found authenticated user, updating auth state");
           queryClient.setQueryData(["/api/user"], userData);
-          toast({
-            title: "Login successful",
-            description: `Welcome to ScootMe, ${userData.fullName}!`,
-          });
-          return;
-        }
-        
-        // If no redirect result, check localStorage as a fallback
-        try {
-          const storedUserJson = localStorage.getItem('auth_user');
-          if (storedUserJson) {
-            const storedUser = JSON.parse(storedUserJson);
-            
-            if (storedUser && storedUser.id && storedUser.email) {
-              console.log("Restoring user from localStorage");
-              
-              // Verify the user's session is still valid by making an API call
-              try {
-                const res = await fetch('/api/user', { credentials: 'include' });
-                if (res.ok) {
-                  // Session is still valid, use the latest user data
-                  const latestUserData = await res.json();
-                  queryClient.setQueryData(["/api/user"], latestUserData);
-                  console.log("User session verified and restored");
-                } else {
-                  // Session expired, but we can try to use the stored user to re-authenticate
-                  console.log("Session expired, trying to reuse stored auth credentials");
-                  queryClient.setQueryData(["/api/user"], storedUser);
-                  
-                  // Silently trigger a refetch to confirm this user is still valid
-                  refetch();
-                }
-              } catch (apiError) {
-                console.error("Error verifying user session:", apiError);
-                // Still use stored user data but mark for refetch
-                queryClient.setQueryData(["/api/user"], storedUser);
-              }
-            }
+          
+          // Only show toast if we've just completed authentication
+          // (within the last 3 seconds)
+          const recentAuthTimestamp = Number(localStorage.getItem('auth_success_timestamp') || '0');
+          const isRecentAuth = Date.now() - recentAuthTimestamp < 3000;
+          
+          if (isRecentAuth) {
+            toast({
+              title: "Login successful",
+              description: `Welcome to ScootMe, ${userData.fullName}!`,
+            });
           }
-        } catch (storageError) {
-          console.error("Error reading from localStorage:", storageError);
+          return;
         }
       } catch (error: any) {
         console.error("Error handling authentication state:", error);
+        
+        // Show an error message if we failed to process authentication
+        toast({
+          title: "Authentication error",
+          description: error.message || "Failed to complete authentication",
+          variant: "destructive",
+        });
       }
     };
     
@@ -259,34 +238,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const googleLoginMutation = useMutation({
+  const googleLoginMutation = useMutation<SelectUser | null, Error, void>({
     mutationFn: async () => {
-      // Import firebase auth functions dynamically to avoid loading them on every page
-      const { signInWithGoogle } = await import("@/lib/firebase");
+      // Import direct auth functions dynamically to avoid loading them on every page
+      const { signInWithGoogle } = await import("@/lib/direct-auth");
       try {
-        const userData = await signInWithGoogle();
-        return userData;
+        // This will redirect to Google authentication
+        // We'll return to the app after successful auth
+        signInWithGoogle();
+        
+        // We won't get here because of the redirect
+        // The authentication status will be checked when we return to the app
+        // in the useEffect hook above using checkAuthenticationStatus
+        return null;
       } catch (error) {
-        console.error("Firebase Google sign-in error:", error);
-        throw error;
+        console.error("Google sign-in error:", error);
+        throw error instanceof Error ? error : new Error(String(error));
       }
     },
-    onSuccess: (user: SelectUser) => {
-      // Update query cache
-      queryClient.setQueryData(["/api/user"], user);
-      
-      // Store user in localStorage for persistence across page reloads
-      try {
-        localStorage.setItem('auth_user', JSON.stringify(user));
-        localStorage.setItem('auth_success_timestamp', Date.now().toString());
-      } catch (e) {
-        console.warn("Error storing auth data in localStorage:", e);
+    // Note: This onSuccess handler won't be called on direct OAuth flow
+    // because we redirect away from the page. The user data will be
+    // handled by the useEffect hook when we return to the app.
+    onSuccess: (user: SelectUser | null) => {
+      // Only proceed if we have user data (should be null in redirect flow)
+      if (user) {
+        // Update query cache
+        queryClient.setQueryData(["/api/user"], user);
+        
+        // Store user in localStorage for persistence across page reloads
+        try {
+          localStorage.setItem('auth_user', JSON.stringify(user));
+          localStorage.setItem('auth_success_timestamp', Date.now().toString());
+        } catch (e) {
+          console.warn("Error storing auth data in localStorage:", e);
+        }
+        
+        toast({
+          title: "Login successful",
+          description: `Welcome to ScootMe, ${user.fullName}!`,
+        });
       }
-      
-      toast({
-        title: "Login successful",
-        description: `Welcome to ScootMe, ${user.fullName}!`,
-      });
     },
     onError: (error: Error) => {
       toast({
